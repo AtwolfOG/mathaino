@@ -1,0 +1,38 @@
+name: mathaino
+
+services:
+  postgres:
+    build:
+      context: ./docker/postgres
+      target: development
+    environment:
+      POSTGRES_PASSWORD: mathaino_bootstrap_local
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mathaino -d mathaino"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  postgres-test:
+    build:
+      context: ./docker/postgres
+      target: test
+    profiles: ["test"]
+    environment:
+      POSTGRES_PASSWORD: mathaino_test_bootstrap_local
+    ports:
+      - "127.0.0.1:54330:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mathaino_test -d mathaino_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  postgres_data:
