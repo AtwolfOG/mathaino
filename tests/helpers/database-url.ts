@@ -1,4 +1,4 @@
-import { validateDatabaseUrl } from "@/infrastructure/config/environment";
+import { validateDatabaseUrl } from "../../src/infrastructure/config/environment.ts";
 
 export function getTestDatabaseUrl(value: unknown): string {
   const message =

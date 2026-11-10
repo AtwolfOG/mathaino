@@ -1,9 +1,602 @@
 @import "tailwindcss" source(none);
+@import "./reader.css";
 @source "../**/*.{ts,tsx}";
 
+:root {
+  --paper: #f4f7f6;
+  --page: #ffffff;
+  --ink: #17324d;
+  --muted: #5b6f79;
+  --teal: #086a61;
+  --teal-dark: #07554f;
+  --selected: #e4f1ee;
+  --rule: #c9d5d1;
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  background: var(--paper);
+  scroll-behavior: smooth;
+}
 body {
   margin: 0;
-  background: #fafaf9;
-  color: #1c1917;
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+a,
+button,
+input,
+summary {
+  touch-action: manipulation;
+}
+button,
+summary {
+  font: inherit;
+}
+button {
+  border: 0;
+}
+@media (pointer: fine) {
+  html {
+    overscroll-behavior: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+.auth-shell,
+.practice-shell {
+  margin-inline: auto;
+  padding: clamp(2rem, 10vh, 6rem) 1.5rem 3rem;
+  color: #142c45;
+}
+.auth-shell {
+  max-width: 30rem;
+}
+.practice-shell {
+  max-width: 52rem;
+}
+.auth-wordmark {
+  display: inline-block;
+  margin-bottom: 2.5rem;
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", serif;
+  font-size: 2rem;
+  color: #142c45;
+  text-decoration: none;
+}
+.auth-heading {
+  font-size: 2rem;
+  line-height: 1.2;
+  font-weight: 600;
+}
+.auth-introduction {
+  margin-top: 0.75rem;
+  margin-bottom: 2rem;
+}
+.auth-form {
+  display: grid;
+  gap: 1.25rem;
+}
+.auth-field {
+  display: grid;
+  gap: 0.5rem;
+}
+.auth-field label {
+  font-weight: 600;
+}
+.auth-field input {
+  width: 100%;
+  border: 1px solid #758b9c;
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  background: #fff;
+  color: #142c45;
+  font-size: 1rem;
+}
+.auth-help {
+  font-size: 0.875rem;
+  color: #425b70;
+}
+.auth-submit {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border-radius: 0.375rem;
+  background: #006b61;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.auth-secondary {
+  padding: 0.65rem 1rem;
+  border: 1px solid #006b61;
+  border-radius: 0.375rem;
+  color: #005a52;
+  background: #fff;
+  cursor: pointer;
+}
+.auth-submit:disabled,
+.auth-secondary:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.auth-alternative {
+  margin-top: 1.5rem;
+}
+.auth-alternative a,
+.practice-shell a:not(.auth-wordmark) {
+  color: #005a52;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.auth-error {
+  color: #a32a21;
+  line-height: 1.5;
+}
+.auth-error:empty {
+  margin: 0;
+}
+.auth-notice {
+  margin-bottom: 1.5rem;
+  padding-left: 0.8rem;
+  border-left: 3px solid #006b61;
+}
+:where(a, button, input, summary):focus-visible,
+.auth-error:focus {
+  outline: 3px solid #006b61;
+  outline-offset: 3px;
+}
+.practice-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+.practice-header p {
+  margin-top: 0.75rem;
+}
+.practice-header > div {
+  min-width: 0;
+}
+.practice-header p,
+.learning-items p {
+  overflow-wrap: anywhere;
+}
+.practice-shell h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+.learning-items {
+  display: grid;
+  gap: 1.5rem;
+}
+.learning-items h3 {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.today-shell,
+.library-shell,
+.settings-shell {
+  width: min(100% - 2rem, 58rem);
+  margin-inline: auto;
+  padding-block: 1.25rem 4rem;
+}
+.today-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+.today-header .auth-wordmark {
+  margin: 0 0 1rem;
+}
+.today-header nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.today-header nav a {
+  color: var(--ink);
+  text-underline-offset: 0.25em;
+}
+.today-header nav button {
+  padding: 0;
+  background: transparent;
+  color: var(--teal-dark);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+  cursor: pointer;
+}
+.today-title {
+  margin: clamp(2.5rem, 8vh, 5rem) 0 2rem;
+}
+.today-title h1 {
+  margin: 0;
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", serif;
+  font-size: clamp(2.75rem, 8vw, 4.75rem);
+  font-weight: 400;
+  line-height: 1;
+}
+.today-title p {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+}
+.today-practice {
+  max-width: 46rem;
+}
+.today-progress > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.today-progress strong {
+  color: var(--ink);
+}
+.today-progress progress {
+  display: block;
+  width: 100%;
+  height: 0.3rem;
+  margin-top: 0.6rem;
+  accent-color: var(--teal);
+}
+.practice-verse {
+  min-height: 18rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-block: clamp(2.5rem, 8vh, 5rem);
+}
+.practice-verse h2 {
+  margin: 0.8rem 0 1.25rem;
+  font-size: 1rem;
+  font-weight: 650;
+}
+.verse-reveal > p {
+  max-width: 38rem;
+  margin: 1.25rem 0 0;
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", serif;
+  font-size: clamp(1.65rem, 5vw, 2.35rem);
+  line-height: 1.5;
+}
+.typed-recitation {
+  display: grid;
+  gap: 1.5rem;
+}
+.verse-reveal {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+.verse-reveal > button {
+  min-height: 2.75rem;
+  border: 1px solid var(--teal);
+  border-radius: 999px;
+  padding-inline: 1.1rem;
+  background: white;
+  color: var(--teal-dark);
+  font-weight: 650;
+  cursor: pointer;
+}
+.recitation-form {
+  display: grid;
+  gap: 0.75rem;
+}
+.recitation-form > label {
+  font-weight: 650;
+}
+.recitation-form textarea {
+  width: 100%;
+  min-height: 11rem;
+  resize: vertical;
+  border: 1px solid #758b9c;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: #fffefa;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.08rem;
+  line-height: 1.65;
+}
+.recitation-form textarea:focus {
+  outline: 3px solid color-mix(in srgb, var(--teal) 28%, transparent);
+  outline-offset: 2px;
+  border-color: var(--teal-dark);
+}
+.recitation-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.recitation-actions button,
+.recitation-result button {
+  min-height: 2.75rem;
+  border: 1px solid var(--teal);
+  border-radius: 0.35rem;
+  padding-inline: 1.2rem;
+  background: var(--teal);
+  color: white;
+  font-weight: 650;
+  cursor: pointer;
+}
+.recitation-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.recitation-actions small {
+  color: var(--muted);
+}
+.typed-recitation [role="alert"] {
+  margin: 0;
+  color: #9a2f26;
+  font-weight: 650;
+}
+.recitation-result {
+  padding: 1.5rem;
+  border: 1px solid var(--rule);
+  border-left: 0.35rem solid var(--teal);
+  border-radius: 0.4rem;
+  background: white;
+}
+.recitation-result h3 {
+  margin: 0 0 0.35rem;
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", serif;
+  font-size: 1.7rem;
+  font-weight: 400;
+}
+.recitation-result ul {
+  display: grid;
+  gap: 0.45rem;
+  padding-left: 1.25rem;
+}
+.recitation-result button {
+  margin-top: 0.5rem;
+  background: white;
+  color: var(--teal-dark);
+}
+.review-unavailable {
+  max-width: 36rem;
+  padding: 1.25rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.4rem;
+  background: white;
+}
+.learning-status {
+  align-self: flex-start;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: var(--teal-dark);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.learning-status-review-due {
+  color: #8b4d0f;
+}
+.learning-status-mastered {
+  color: #4f6070;
+}
+.queue-navigation {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+}
+.queue-navigation button,
+.library-actions button,
+.settings-form button {
+  min-height: 2.75rem;
+  border: 1px solid var(--teal);
+  border-radius: 0.35rem;
+  background: var(--teal);
+  color: white;
+  font-weight: 650;
+  cursor: pointer;
+}
+.queue-navigation button:first-child {
+  background: white;
+  color: var(--teal-dark);
+}
+.queue-navigation button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.practice-status {
+  min-height: 1.5rem;
+  color: #9a2f26;
+}
+.today-empty {
+  max-width: 36rem;
+  padding: 3rem 0;
+  border-top: 1px solid var(--rule);
+}
+.today-empty h2 {
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", serif;
+  font-size: 2rem;
+  font-weight: 400;
+}
+.today-empty a {
+  display: inline-block;
+  margin-top: 1rem;
+  color: var(--teal-dark);
+  font-weight: 650;
+}
+@media (max-width: 40rem) {
+  .today-header {
+    align-items: flex-start;
+  }
+  .today-header nav {
+    max-width: 14rem;
+  }
+  .today-progress > div {
+    align-items: flex-end;
+  }
+  .practice-verse {
+    min-height: 0;
+    padding-block: 2rem;
+  }
+  .recitation-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .recitation-actions button,
+  .recitation-result button {
+    width: 100%;
+  }
+}
+
+.management-title {
+  margin: 3.5rem 0 2.5rem;
+}
+.management-title h1 {
+  margin: 0;
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", serif;
+  font-size: clamp(2.25rem, 7vw, 3.5rem);
+  font-weight: 400;
+}
+.management-title p {
+  color: var(--muted);
+}
+.library-items {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--rule);
+}
+.library-items > li {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.library-items > li.is-archived {
+  opacity: 0.72;
+}
+.library-item-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.library-item-heading h2 {
+  margin: 0;
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+.library-items > li > p {
+  max-width: 44rem;
+  line-height: 1.65;
+}
+.library-actions details {
+  max-width: 28rem;
+}
+.library-actions summary {
+  width: max-content;
+  color: var(--teal-dark);
+  cursor: pointer;
+  font-weight: 650;
+}
+.library-actions label {
+  display: grid;
+  gap: 0.4rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+.library-actions select {
+  min-height: 2.75rem;
+  border: 1px solid #758b9c;
+  border-radius: 0.35rem;
+  padding-inline: 0.75rem;
+  background: white;
+  color: var(--ink);
+}
+.library-actions button {
+  padding-inline: 1rem;
+}
+.library-status {
+  min-height: 1.5rem;
+}
+.settings-form {
+  max-width: 38rem;
+}
+.settings-form + .settings-form {
+  margin-top: 2.5rem;
+  padding-top: 2.5rem;
+  border-top: 1px solid var(--rule);
+}
+.settings-form fieldset {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  border: 0;
+}
+.settings-form legend {
+  margin-bottom: 1rem;
+  font-weight: 650;
+}
+.settings-form label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.35rem;
+  background: white;
+}
+.settings-form input {
+  margin-top: 0.25rem;
+  accent-color: var(--teal);
+}
+.practice-settings-form label {
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, 14rem);
+  align-items: center;
+}
+.practice-settings-form input,
+.practice-settings-form select {
+  min-height: 2.75rem;
+  margin: 0;
+  border: 1px solid #758b9c;
+  border-radius: 0.35rem;
+  padding-inline: 0.75rem;
+  background: white;
+  color: var(--ink);
+}
+@media (max-width: 34rem) {
+  .practice-settings-form label {
+    grid-template-columns: 1fr;
+  }
+}
+.settings-form span {
+  display: grid;
+  gap: 0.35rem;
+}
+.settings-form small {
+  color: var(--muted);
+}
+.settings-form button {
+  padding-inline: 1.25rem;
+}
+.settings-form p {
+  min-height: 1.5rem;
 }

@@ -115,6 +115,11 @@ integration suite. The dedicated test service was left available locally.
 
 ## Remaining dependency findings
 
+This section records initial setup. The subsequent authentication task patched
+the legacy esbuild chain; current results and rationale are in
+[authentication.md](authentication.md). Production-only audit now reports zero;
+eight development-tooling findings remain.
+
 `npm audit --json` reported 12 moderate findings in the final compatible
 development-tooling dependency tree (including Drizzle Kit's legacy esbuild
 loader and Next.js ESLint tooling's minimatch chain). No high/critical findings

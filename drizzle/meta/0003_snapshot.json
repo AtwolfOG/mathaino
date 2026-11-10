@@ -1,0 +1,1065 @@
+{
+  "id": "7e00fa39-b758-4950-8646-eb45535d16b3",
+  "prevId": "9e49628b-df5e-48ff-8b11-f7d2baa792a5",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.auth_accounts": {
+      "name": "auth_accounts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_account_id": {
+          "name": "provider_account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "auth_accounts_user_idx": {
+          "name": "auth_accounts_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "auth_accounts_user_id_users_id_fk": {
+          "name": "auth_accounts_user_id_users_id_fk",
+          "tableFrom": "auth_accounts",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "auth_accounts_provider_identity_unique": {
+          "name": "auth_accounts_provider_identity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "provider",
+            "provider_account_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "auth_accounts_provider_nonempty": {
+          "name": "auth_accounts_provider_nonempty",
+          "value": "btrim(\"auth_accounts\".\"provider\") <> ''"
+        },
+        "auth_accounts_identity_nonempty": {
+          "name": "auth_accounts_identity_nonempty",
+          "value": "btrim(\"auth_accounts\".\"provider_account_id\") <> ''"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.auth_sessions": {
+      "name": "auth_sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "auth_sessions_user_idx": {
+          "name": "auth_sessions_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "auth_sessions_expiry_idx": {
+          "name": "auth_sessions_expiry_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "auth_sessions_user_id_users_id_fk": {
+          "name": "auth_sessions_user_id_users_id_fk",
+          "tableFrom": "auth_sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "auth_sessions_token_hash_unique": {
+          "name": "auth_sessions_token_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "auth_sessions_hash_sha256": {
+          "name": "auth_sessions_hash_sha256",
+          "value": "\"auth_sessions\".\"token_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "auth_sessions_valid_lifetime": {
+          "name": "auth_sessions_valid_lifetime",
+          "value": "\"auth_sessions\".\"expires_at\" > \"auth_sessions\".\"created_at\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.bible_books": {
+      "name": "bible_books",
+      "schema": "",
+      "columns": {
+        "translation_id": {
+          "name": "translation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "bible_books_translation_id_id_pk": {
+          "name": "bible_books_translation_id_id_pk",
+          "columns": [
+            "translation_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "bible_books_translation_nonempty": {
+          "name": "bible_books_translation_nonempty",
+          "value": "btrim(\"bible_books\".\"translation_id\") <> ''"
+        },
+        "bible_books_id_nonempty": {
+          "name": "bible_books_id_nonempty",
+          "value": "btrim(\"bible_books\".\"id\") <> ''"
+        },
+        "bible_books_name_nonempty": {
+          "name": "bible_books_name_nonempty",
+          "value": "btrim(\"bible_books\".\"name\") <> ''"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.bible_verses": {
+      "name": "bible_verses",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "translation_id": {
+          "name": "translation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "book_id": {
+          "name": "book_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter": {
+          "name": "chapter",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verse": {
+          "name": "verse",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "bible_verses_book_fk": {
+          "name": "bible_verses_book_fk",
+          "tableFrom": "bible_verses",
+          "tableTo": "bible_books",
+          "columnsFrom": [
+            "translation_id",
+            "book_id"
+          ],
+          "columnsTo": [
+            "translation_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "bible_verses_reference_unique": {
+          "name": "bible_verses_reference_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "translation_id",
+            "book_id",
+            "chapter",
+            "verse"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "bible_verses_chapter_nonempty": {
+          "name": "bible_verses_chapter_nonempty",
+          "value": "btrim(\"bible_verses\".\"chapter\") <> ''"
+        },
+        "bible_verses_verse_nonempty": {
+          "name": "bible_verses_verse_nonempty",
+          "value": "btrim(\"bible_verses\".\"verse\") <> ''"
+        },
+        "bible_verses_text_nonempty": {
+          "name": "bible_verses_text_nonempty",
+          "value": "btrim(\"bible_verses\".\"text\") <> ''"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.daily_practice_completions": {
+      "name": "daily_practice_completions",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "practice_date": {
+          "name": "practice_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_attempt_id": {
+          "name": "source_attempt_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time_zone": {
+          "name": "time_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_policy": {
+          "name": "day_policy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "daily_completion_attempt_idx": {
+          "name": "daily_completion_attempt_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_attempt_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "practice_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "daily_completion_owned_day_attempt_fk": {
+          "name": "daily_completion_owned_day_attempt_fk",
+          "tableFrom": "daily_practice_completions",
+          "tableTo": "practice_attempts",
+          "columnsFrom": [
+            "user_id",
+            "source_attempt_id",
+            "practice_date"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id",
+            "practice_date"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "daily_practice_completions_user_id_practice_date_pk": {
+          "name": "daily_practice_completions_user_id_practice_date_pk",
+          "columns": [
+            "user_id",
+            "practice_date"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "daily_completion_zone_nonempty": {
+          "name": "daily_completion_zone_nonempty",
+          "value": "btrim(\"daily_practice_completions\".\"time_zone\") <> ''"
+        },
+        "daily_completion_policy_nonempty": {
+          "name": "daily_completion_policy_nonempty",
+          "value": "btrim(\"daily_practice_completions\".\"day_policy\") <> ''"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.learning_items": {
+      "name": "learning_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verse_id": {
+          "name": "verse_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'learning'"
+        },
+        "mastered_at": {
+          "name": "mastered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "learning_items_user_state_idx": {
+          "name": "learning_items_user_state_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "learning_items_verse_idx": {
+          "name": "learning_items_verse_idx",
+          "columns": [
+            {
+              "expression": "verse_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "learning_items_user_id_users_id_fk": {
+          "name": "learning_items_user_id_users_id_fk",
+          "tableFrom": "learning_items",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "learning_items_verse_id_bible_verses_id_fk": {
+          "name": "learning_items_verse_id_bible_verses_id_fk",
+          "tableFrom": "learning_items",
+          "tableTo": "bible_verses",
+          "columnsFrom": [
+            "verse_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "learning_items_user_verse_unique": {
+          "name": "learning_items_user_verse_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "verse_id"
+          ]
+        },
+        "learning_items_owner_id_unique": {
+          "name": "learning_items_owner_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "id"
+          ]
+        },
+        "learning_items_owner_id_state_unique": {
+          "name": "learning_items_owner_id_state_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "id",
+            "state"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "learning_items_state_valid": {
+          "name": "learning_items_state_valid",
+          "value": "\"learning_items\".\"state\" in ('learning', 'mastered')"
+        },
+        "learning_items_mastery_consistent": {
+          "name": "learning_items_mastery_consistent",
+          "value": "(\"learning_items\".\"state\" = 'mastered') = (\"learning_items\".\"mastered_at\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.practice_attempts": {
+      "name": "practice_attempts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learning_item_id": {
+          "name": "learning_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operation_id": {
+          "name": "operation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "request_hash": {
+          "name": "request_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mode": {
+          "name": "mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "practiced_at": {
+          "name": "practiced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "practice_date": {
+          "name": "practice_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time_zone": {
+          "name": "time_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assessment_policy": {
+          "name": "assessment_policy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_policy": {
+          "name": "day_policy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "practice_attempts_item_time_idx": {
+          "name": "practice_attempts_item_time_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learning_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "practiced_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "practice_attempts_user_day_idx": {
+          "name": "practice_attempts_user_day_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "practice_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "practice_attempts_owned_item_fk": {
+          "name": "practice_attempts_owned_item_fk",
+          "tableFrom": "practice_attempts",
+          "tableTo": "learning_items",
+          "columnsFrom": [
+            "user_id",
+            "learning_item_id"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "practice_attempts_user_operation_unique": {
+          "name": "practice_attempts_user_operation_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "operation_id"
+          ]
+        },
+        "practice_attempts_owner_id_day_unique": {
+          "name": "practice_attempts_owner_id_day_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "id",
+            "practice_date"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "practice_attempts_mode_valid": {
+          "name": "practice_attempts_mode_valid",
+          "value": "\"practice_attempts\".\"mode\" in ('typing', 'voice')"
+        },
+        "practice_attempts_purpose_valid": {
+          "name": "practice_attempts_purpose_valid",
+          "value": "\"practice_attempts\".\"purpose\" in ('learning', 'review')"
+        },
+        "practice_attempts_outcome_valid": {
+          "name": "practice_attempts_outcome_valid",
+          "value": "\"practice_attempts\".\"outcome\" in ('success', 'failure')"
+        },
+        "practice_attempts_hash_sha256": {
+          "name": "practice_attempts_hash_sha256",
+          "value": "\"practice_attempts\".\"request_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "practice_attempts_zone_nonempty": {
+          "name": "practice_attempts_zone_nonempty",
+          "value": "btrim(\"practice_attempts\".\"time_zone\") <> ''"
+        },
+        "practice_attempts_assessment_nonempty": {
+          "name": "practice_attempts_assessment_nonempty",
+          "value": "btrim(\"practice_attempts\".\"assessment_policy\") <> ''"
+        },
+        "practice_attempts_day_policy_nonempty": {
+          "name": "practice_attempts_day_policy_nonempty",
+          "value": "btrim(\"practice_attempts\".\"day_policy\") <> ''"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.review_schedules": {
+      "name": "review_schedules",
+      "schema": "",
+      "columns": {
+        "learning_item_id": {
+          "name": "learning_item_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learning_state": {
+          "name": "learning_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'mastered'"
+        },
+        "next_due_at": {
+          "name": "next_due_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_reviewed_at": {
+          "name": "last_reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "policy_id": {
+          "name": "policy_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "review_schedules_owner_item_idx": {
+          "name": "review_schedules_owner_item_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learning_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learning_state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "review_schedules_user_due_idx": {
+          "name": "review_schedules_user_due_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "next_due_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "review_schedules_owned_mastered_item_fk": {
+          "name": "review_schedules_owned_mastered_item_fk",
+          "tableFrom": "review_schedules",
+          "tableTo": "learning_items",
+          "columnsFrom": [
+            "user_id",
+            "learning_item_id",
+            "learning_state"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id",
+            "state"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "review_schedules_mastered_only": {
+          "name": "review_schedules_mastered_only",
+          "value": "\"review_schedules\".\"learning_state\" = 'mastered'"
+        },
+        "review_schedules_policy_nonempty": {
+          "name": "review_schedules_policy_nonempty",
+          "value": "btrim(\"review_schedules\".\"policy_id\") <> ''"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

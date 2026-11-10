@@ -1,7 +1,7 @@
 import "server-only";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { validateDatabaseUrl } from "../config/environment";
+import { validateDatabaseUrl } from "../config/environment.ts";
 
 // Create once at the composition boundary; the owner must close it on shutdown.
 // Constructing a pool does not connect or run queries during builds/imports.
@@ -16,3 +16,9 @@ export function createDatabase(connectionString: string) {
 
   return { db: drizzle(pool), close: () => pool.end() };
 }
+
+export type Database = ReturnType<typeof createDatabase>["db"];
+export type DatabaseTransaction = Parameters<
+  Parameters<Database["transaction"]>[0]
+>[0];
+export type TransactionHost = Pick<Database, "transaction">;

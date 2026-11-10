@@ -7,6 +7,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    setupFiles: ["./tests/helpers/integration.ts"],
     include: ["tests/integration/**/*.test.ts"],
     clearMocks: true,
     restoreMocks: true,

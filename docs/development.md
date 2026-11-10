@@ -13,32 +13,45 @@
   through ESLint 9; upgrading to 10 produced peer conflicts and was reverted.
 
 Next.js route files are entry points. Database and configuration code live in
-infrastructure; domain/application modules will be added when product behaviour
-requires them. No application tables, authentication, reader, learning policy,
-speech provider, or PWA/offline policy is implemented here.
+infrastructure. The schema, migrations, transactional reference seed API, and
+trusted-authentication context port are implemented. Better Auth now provides
+email/password, persistent sessions, protected pages and owned learning reads;
+reader UI, learning policy, speech provider, and PWA/offline policy remain open.
+See [database.md](database.md) for tables, constraints, ownership, and operations.
+The KJV directory parser/import adapter and explicit Protestant profile are
+documented in [kjv-source.md](kjv-source.md). `npm run bible:import` performs the
+separate operator import; `db:seed` remains an empty seed entry point.
+Authentication roles, required environment variables, and current test commands
+are in [authentication.md](authentication.md).
 
 Dependencies are pinned in `package.json` and `package-lock.json`. Use `npm ci`
-for reproducible installs. `@next/env` lets Drizzle Kit use Next.js environment
-loading without another dotenv dependency. Small runtime validation functions use
+for reproducible installs. `@next/env` lets database commands use Next.js environment
+loading without another dotenv dependency. It is a direct runtime dependency for
+those commands. Small runtime validation functions use
 the platform URL parser instead of adding a schema library.
 
 ## Commands
 
-| Command                    | Purpose                                                       |
-| -------------------------- | ------------------------------------------------------------- |
-| `npm run dev`              | Next.js development server on port 3000                       |
-| `npm run build`            | Production compilation, prerendering, and Next.js type checks |
-| `npm run start`            | Serve an existing production build                            |
-| `npm run test`             | Deterministic unit and component tests, once                  |
-| `npm run test:watch`       | The same tests in watch mode                                  |
-| `npm run test:integration` | Explicit live PostgreSQL tests; requires `TEST_DATABASE_URL`  |
-| `npm run test:e2e`         | Playwright; builds and starts a dedicated production server   |
-| `npm run lint`             | ESLint; warnings fail the check                               |
-| `npm run typecheck`        | Generate Next.js route types, then run strict `tsc --noEmit`  |
-| `npm run format:check`     | Check application/configuration/tests and development docs    |
-| `npm run format`           | Format those same scaffold files                              |
+| Command                    | Purpose                                                        |
+| -------------------------- | -------------------------------------------------------------- |
+| `npm run dev`              | Next.js development server on port 3000                        |
+| `npm run build`            | Production compilation, prerendering, and Next.js type checks  |
+| `npm run start`            | Serve an existing production build                             |
+| `npm run test`             | Deterministic unit and component tests, once                   |
+| `npm run test:watch`       | The same tests in watch mode                                   |
+| `npm run test:integration` | Explicit live PostgreSQL tests; requires `TEST_DATABASE_URL`   |
+| `npm run test:e2e`         | Playwright; builds and starts a dedicated production server    |
+| `npm run lint`             | ESLint; warnings fail the check                                |
+| `npm run typecheck`        | Generate Next.js route types, then run strict `tsc --noEmit`   |
+| `npm run format:check`     | Check application/configuration/tests and development docs     |
+| `npm run format`           | Format those same scaffold files                               |
+| `npm run db:generate`      | Generate a reviewable Drizzle migration                        |
+| `npm run db:check`         | Check migration snapshot consistency                           |
+| `npm run db:migrate`       | Apply committed migrations to the explicit configured database |
+| `npm run db:seed`          | Run the default empty reference seed; no Bible data import     |
 
-Formatting is scoped to the scaffold, README, and this guide. Existing planning
+Formatting is scoped to application/configuration/tests/scripts, README, and the
+development/database/setup-verification guides. Existing planning
 documents and source Bible files are not bulk-formatted. `.prettierignore` also
 excludes the Bible corpus, lockfile, dependencies, and generated artifacts.
 
@@ -90,13 +103,13 @@ Do not reset an existing volume to re-run it without explicit permission.
 Construct one at the future composition boundary and reuse it, rather than
 creating a pool per request. Pools have a maximum of five connections, a three-
 second connect timeout, and a ten-second idle timeout. Close owned pools during
-shutdown and test cleanup. No global authentication or persistence framework is
-introduced.
+shutdown and test cleanup. Better Auth uses a separate reusable pool under its
+restricted auth role; verified sessions supply request-local learning ownership.
 
-`drizzle.config.ts` points at an intentionally empty application schema and the
-separate `drizzle/` migration-output directory. Once a tested feature needs tables,
-review its schema and generate reviewable migrations. This setup does not run
-schema push, migrations, resets, or seeding against any user store.
+`drizzle.config.ts` points at the tested application schema and separate
+`drizzle/` migrations. The database guide describes the schema and command
+contracts. Builds do not apply migrations or seeds. During schema implementation,
+migrations and seed tests run only against explicitly isolated test stores.
 
 ## Test isolation and helpers
 
@@ -112,7 +125,7 @@ integration/Playwright tests. Aliases match TypeScript's `@/*` mapping.
 
 ```sh
 docker compose --profile test up -d --build --wait postgres-test
-TEST_DATABASE_URL=postgresql://mathaino_test:mathaino_test_local@127.0.0.1:54330/mathaino_test npm run test:integration
+TEST_DATABASE_URL=postgresql://mathaino_test:mathaino_test_local@127.0.0.1:54330/mathaino_test TEST_AUTH_DATABASE_URL=postgresql://mathaino_auth:mathaino_auth_test_local@127.0.0.1:54330/mathaino_test npm run test:integration
 ```
 
 `vitest.integration.config.mts` discovers only integration tests and serializes
@@ -122,6 +135,13 @@ The foundation test verifies the expected database and role, executes a read-onl
 query through Drizzle, confirms the role is not a superuser, and closes its pool
 in `finally`. It does not mutate source files, application data, or schema.
 
+The schema suites apply committed migrations only to that explicit test store.
+Their fixtures run in rollback-only transactions with nested savepoints for
+expected failures. They cover real uniqueness/check/FK constraints, cascades,
+forced RLS and cross-user denial, timestamp triggers, atomic operations, seed
+validation/idempotence, and native command execution. They never reset or truncate
+a development/production database or read source Bible files.
+
 The integration suite mocks only Next.js's `server-only` import sentinel because
 it runs in plain Node; real client/server import protection is enforced by Next.
 It does not mock PostgreSQL or Drizzle. Future mutation tests must use isolated
@@ -130,11 +150,12 @@ fixtures/transactions in the test store, never development/production data.
 ### Browser tests
 
 Install Chromium once with `npx playwright install chromium`.
-`playwright.config.ts` runs `npm run build` and `npm run start` on loopback port
-3100, refusing to reuse an unrelated server. Its environment supplies a valid
-but intentionally unreachable database URL, demonstrating that foundation flows
-do not depend on a real database. The explicit test URL is cleared for that
-server. A preexisting listener on port 3100 is an error, not an excuse to test it.
+`playwright.config.ts` prepares only the dedicated `mathaino_auth_e2e_test` store,
+then runs `npm run build` and `npm run start` on loopback port 3100. Explicit
+test application/auth URLs are required; there is no development fallback.
+It refuses to reuse an unrelated server. Authentication tests use real library
+sessions and database state; the liveness endpoint remains database-independent.
+See the exact browser command in [authentication.md](authentication.md).
 
 Vitest never discovers `tests/e2e/`. Browser checks exercise the accessible main
 heading/title and the actual HTTP health response. Artifacts are retained on

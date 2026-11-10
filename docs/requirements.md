@@ -1,6 +1,8 @@
 # Mathaino requirements
 
-Status: planning baseline; no application features are implemented.
+Status: requirements baseline. Authentication, Bible import, learning-item
+lifecycle, and the Today queue are implemented; remaining learning workflows
+follow the decision register below.
 
 Read with [architecture.md](architecture.md) and [AGENTS.md](../AGENTS.md).
 This document is the source of product requirements; architecture describes how
@@ -34,20 +36,23 @@ selected foundation stack and commands are now in [development.md](development.m
 
 Observed source files:
 
-| File | Observed contents |
-| --- | --- |
-| `bible/kjv/en-kjv.json` | Translation metadata, ID `en-kjv`, scope `Bible with Deuterocanon` |
-| `bible/kjv/books/genesis/chapters/1.json` | A `data` array of records with `book`, `chapter`, `verse`, and `text` |
-| `bible/kjv/books/genesis/chapters/1/verses/4.json` | `verse` and `text`; includes an inline annotation |
-| `bible/kjv/books/john/chapters/3/verses/16.json` | `verse` and `text`; includes a paragraph marker |
-| `bible/kjv/books/esther(greek)/chapters/` | Chapter files numbered 10 through 16 |
+| File                                               | Observed contents                                                     |
+| -------------------------------------------------- | --------------------------------------------------------------------- |
+| `bible/kjv/en-kjv.json`                            | Translation metadata, ID `en-kjv`, scope `Bible with Deuterocanon`    |
+| `bible/kjv/books/genesis/chapters/1.json`          | A `data` array of records with `book`, `chapter`, `verse`, and `text` |
+| `bible/kjv/books/genesis/chapters/1/verses/4.json` | `verse` and `text`; includes an inline annotation                     |
+| `bible/kjv/books/john/chapters/3/verses/16.json`   | `verse` and `text`; includes a paragraph marker                       |
+| `bible/kjv/books/esther(greek)/chapters/`          | Chapter files numbered 10 through 16                                  |
 
 Observed chapter and verse identifiers are strings. Available books include
 deuterocanonical works. These samples do not validate the whole dataset.
 Use the existing source, never external translation APIs. Preserve original
 text, annotations, metadata, and filenames. Do not assume 66 books or contiguous
-chapter/verse numbering. A full reader must expose the available dataset, not
-silently omit unfamiliar books. Reading order and presentation remain D-01.
+chapter/verse numbering. For the initial KJV import, the user explicitly selected
+the Protestant 66 and approved verified identical deduplication. The 14 additional
+source books are reported as excluded and remain untouched on disk. The reader
+must expose the selected validated catalogue without silent omissions. See
+[kjv-source.md](kjv-source.md); other presentation decisions remain D-01.
 
 ## 3. User stories and acceptance criteria
 
@@ -61,7 +66,8 @@ As a reader, I can find and read every available book, chapter, and verse.
 - Unavailable references, invalid input, and missing or malformed source data
   produce clear errors rather than fabricated text or traversal to arbitrary files.
 - Reader navigation remains usable by keyboard and at narrow viewport widths.
-- Public reading versus sign-in requirements, reading order, and search are D-01.
+- Reading is public. Navigation follows canonical book/chapter order and loads one
+  chapter at a time; saving a verse requires sign-in. Search remains deferred.
 
 ### US-02: Authenticate and retain learning progress
 
@@ -73,7 +79,8 @@ when I sign in again.
 - Private operations reject missing/expired credentials and cross-user access.
 - Sign-out clears access to private UI and account-specific cached state.
 - Failed saves are reported; the UI never labels an uncommitted change as saved.
-- Authentication methods, recovery, session lifetime, and account lifecycle are D-02.
+- Better Auth email/password and fixed seven-day database sessions are implemented.
+  Recovery, verification delivery, and account lifecycle remain D-02.
 
 ### US-03: Start learning a verse
 
@@ -83,7 +90,10 @@ As a learner, I can select an existing verse for learning and track its progress
 - The item belongs to the authenticated account, not an owner supplied by the UI.
 - Repeating the same add operation cannot accidentally create duplicate active
   progress for that account and verse or reset existing progress.
-- Passage learning, removal, pausing, and intentional restarting are D-03.
+- Removal can archive and retain progress or permanently delete it. Each account
+  stores a default and each removal can override it. Restoring or re-adding an
+  archived verse preserves progress; adding a permanently deleted verse starts fresh.
+- Passage learning, pausing, and restart without deletion remain deferred.
 
 ### US-04: Use a daily learning queue
 
@@ -94,8 +104,11 @@ As a learner, I can see the verses I should practise today.
 - Queue retrieval itself does not award progress or alter mastery.
 - After an accepted attempt, refreshing the queue reflects committed progress.
 - Empty, loading, and failed-load states are distinct and understandable.
-- Eligibility after a same-day success, ordering, daily limits, and whether due
-  reviews share this screen are D-04. Do not invent a default queue size.
+- All active learning items are eligible until attempt policy is implemented.
+  They appear in stable add order, followed by mastered reviews whose due instant
+  has arrived, ordered by due instant and stable add order. There is no daily limit.
+- The current position persists per account with optimistic conflict detection.
+  Same-day post-attempt eligibility remains governed by D-08.
 
 ### US-05: Recite by typing
 
@@ -106,7 +119,8 @@ As a learner, I can type a recitation and understand its assessment.
 - Feedback distinguishes assessed success, assessed failure, and technical error.
 - Repeating a request after a connection interruption cannot award progress twice.
 - Unsupported, empty, or excessive inputs are rejected with useful feedback;
-  concrete input limits must be defined before implementation (D-13).
+  typed input is limited to 10,000 Unicode code points and 1,000 normalised
+  words. Empty or normalisation-empty input is rejected without an attempt.
 - Exact matching, tolerances, reference inclusion, hints, and annotation treatment
   remain D-05; no text normalisation is implicitly approved.
 
@@ -125,6 +139,30 @@ As a learner, I can speak a verse and receive an assessment.
 - Provider, supported environments/languages, correction of transcripts,
   recording limits, consent, and retention policy are D-06 and D-13.
 
+### Approved recitation evaluation policy
+
+Typed recitations and final speech transcripts use the same deterministic,
+word-level evaluation. Comparison is case-insensitive, collapses whitespace,
+removes apostrophes, and treats other punctuation, symbols, and paragraph
+markers as word separators. Actual words remain significant: spelling changes,
+modernised or paraphrased wording, omissions, insertions, substitutions, source
+annotation words, and a recited reference are not silently accepted.
+
+Alignment uses minimum word-level Levenshtein distance. A matching word costs
+zero; each omitted, inserted, or substituted word costs one. Ties are resolved
+in this order: match, substitution, omission, insertion. Accuracy is:
+
+```text
+max(0, 1 - edit distance / expected word count) * 100
+```
+
+Accuracy is rounded to two decimal places. An empty submission for a non-empty
+verse scores zero. The expected verse must contain at least one normalised word.
+An evaluation passes when its accuracy is greater than or equal to the policy's
+configured threshold. The initial server-owned assessment policy uses 90% and is
+identified as `word-levenshtein-90-v1`. Hints and speech-transcription confidence
+do not alter the evaluator's result.
+
 ### US-07: Configure and reach mastery
 
 As a learner, I can choose how many consecutive successful days establish mastery.
@@ -134,9 +172,11 @@ As a learner, I can choose how many consecutive successful days establish master
 - Reaching the effective threshold transitions the item from learning to mastered.
 - A gap in successful calendar days breaks the consecutive run; previous success
   history is not fabricated or erased to disguise the gap.
-- Settings are validated and persisted for the owner. The default, maximum,
-  per-user/per-item scope, and effect on existing progress are D-07.
-- Mixed success/failure within a day and failed-attempt reset behaviour are D-08.
+- The per-user threshold defaults to three days and accepts whole numbers from
+  one through 30. Changes retain credited days and apply on the next successful
+  attempt; already-mastered items remain mastered.
+- A success seals that verse's calendar-day credit. Failures are recorded but do
+  not remove same-day or earlier credit. A calendar gap breaks the consecutive run.
 
 ### US-08: Track a daily practice streak
 
@@ -148,8 +188,9 @@ As a learner, I can see a streak that represents consecutive practice days.
 - Merely opening the app, loading the queue, or experiencing a technical failure
   does not qualify as assessed practice.
 - Streaks are account-specific and distinct from each verse's mastery run.
-- Whether failed assessments or reviews qualify, and how to display yesterday's
-  streak before practice today, are D-09. Time attribution follows section 5.
+- Any persisted assessed typing success or failure qualifies the account-wide
+  practice day. Validation and technical failures do not. Review qualification
+  and the current-day display rule remain part of the deferred review workflow.
 
 ### US-09: Review mastered verses
 
@@ -184,18 +225,18 @@ Conceptual persisted learning states are **learning** and **mastered**. Not adde
 means no learning record. Queue eligibility and review due status are derived
 conditions, not additional mastery states. Paused/archived states are not required.
 
-| Current state | Event | Required effect / unresolved condition |
-| --- | --- | --- |
-| No record | Add an available verse | Create owner-scoped learning progress |
-| Learning/mastered | Duplicate add or retried command | Preserve existing progress; no duplicate award/reset |
-| Learning | Accepted success on an eligible day | Update the successful-day run; master when the effective threshold is reached |
-| Learning | Further success on the same day | Cannot add a second successful day |
-| Learning | Next success after a gap | Starts a new consecutive run; evaluate threshold against that run |
-| Learning | Assessed failure | Record the outcome; run/reset and same-day recovery policy is D-08 |
-| Learning | Threshold setting changes | Re-evaluation timing and retroactive effect are D-07 |
-| Mastered | Accepted review success/failure | Apply approved review policy; demotion is not assumed (D-10) |
-| Any | Capture/transcription/validation error or rolled-back save | No success credit, no wrong-answer penalty, no completed review |
-| Any | Lost response / unknown commit outcome | Reconcile authoritative state using the same operation identity; never award twice |
+| Current state     | Event                                                      | Required effect / unresolved condition                                             |
+| ----------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| No record         | Add an available verse                                     | Create owner-scoped learning progress                                              |
+| Learning/mastered | Duplicate add or retried command                           | Preserve existing progress; no duplicate award/reset                               |
+| Learning          | Accepted success on an eligible day                        | Update the successful-day run; master when the effective threshold is reached      |
+| Learning          | Further success on the same day                            | Cannot add a second successful day                                                 |
+| Learning          | Next success after a gap                                   | Starts a new consecutive run; evaluate threshold against that run                  |
+| Learning          | Assessed failure                                           | Record the outcome; run/reset and same-day recovery policy is D-08                 |
+| Learning          | Threshold setting changes                                  | Re-evaluation timing and retroactive effect are D-07                               |
+| Mastered          | Accepted review success/failure                            | Apply approved review policy; demotion is not assumed (D-10)                       |
+| Any               | Capture/transcription/validation error or rolled-back save | No success credit, no wrong-answer penalty, no completed review                    |
+| Any               | Lost response / unknown commit outcome                     | Reconcile authoritative state using the same operation identity; never award twice |
 
 A successful-day counter can be stale after midnight without a mutation: display
 and eligibility must consider the last credited date, not trust a stored count
@@ -216,30 +257,31 @@ same-day credit. History, counters, and displayed state must agree.
 - An operation spanning midnight must be attributed consistently, including when
   transcription finishes later. The selected event boundary is D-12.
 
-### Proposed implementation policy, awaiting D-12
+### Approved typed-practice day policy
 
-Use a validated account IANA timezone, a trusted server clock, UTC event instants,
-and an attributed local date with the timezone used at acceptance. Preserve that
-context so past activity is not silently rebucketed when the account zone changes.
-Do not hard-code the server timezone, assume UTC is the user's day, or calculate
-tomorrow by adding 24 hours. Initial zone selection, travel/zone-change effective
-time, historical rebucketing, and offline/backdated submissions remain unresolved.
+Use a validated account IANA timezone, defaulting to `Etc/UTC`, a trusted server
+clock, UTC event instants, and the local calendar date in the effective zone at
+server acceptance. Preserve the accepted zone and date on facts so later timezone
+changes do not rebucket history. Typed attempts cannot be backdated by the browser.
+The first review is due at the same local wall-clock time one calendar day after
+mastery, rather than after a fixed 24-hour duration. Travel and offline submission
+policies beyond server-accepted typed attempts remain unresolved.
 
 ## 6. Review scheduling rules
 
 - Schedules belong to the owner's mastered learning item and use an explicit
   next-due value and policy; there is no hidden scheduling default.
-- Due evaluation uses the approved time model. Whether due values are calendar
-  dates or instants is part of D-10/D-12.
+- Due values are stored as timezone-aware instants, as approved during schema
+  implementation. Due computation and local-day attribution remain D-10/D-12.
 - Outcomes and schedule changes commit together; retries do not advance twice.
 - Technical failures do not themselves constitute a review outcome. Rolled-back
   saves leave the schedule unchanged; unknown commits require reconciliation.
   Overdue items cannot disappear solely because the original due date passed.
 - Spaced repetition requires defined successive review spacing. No interval list,
   adaptive formula, scheduler service, or cron job is required by this document.
-- D-10 must define first-review timing, later intervals, success/failure effects,
-  interval anchor (scheduled due versus actual completion), early reviews, repeated
-  same-day reviews, missed reviews, and changes to the scheduling policy.
+- Initial mastery schedules the first review one local calendar day later. D-10
+  must still define later intervals, success/failure effects, interval anchors,
+  early or repeated reviews, missed reviews, and policy changes.
 
 ## 7. Security, privacy, and failure requirements
 
@@ -265,21 +307,21 @@ Resolve a decision in this document with concrete examples before writing its
 failing behaviour tests. Architecture should remain adaptable without building
 multiple speculative implementations.
 
-| ID | Decision to resolve | Affected scope |
-| --- | --- | --- |
-| D-01 | Public reader access, book ordering/display names, annotations presentation, navigation/search scope | US-01 |
-| D-02 | Sign-in methods, recovery, session expiry, account deletion and progress retention/export | US-02, security |
-| D-03 | Multi-verse passages, remove/pause/restart semantics; single verses are the baseline learning unit | US-03, state model |
-| D-04 | Queue eligibility, completion/re-entry, ordering, capacity, and review presentation | US-04 |
-| D-05 | Success definition: case, punctuation, whitespace, spelling, word omissions/order, reference recitation, hints, paragraph markers and embedded notes | US-05/06, mastery |
-| D-06 | Browser versus server speech recognition, provider, language/browser support, transcript correction, audio consent and retention | US-06, privacy |
-| D-07 | Mastery threshold default/range/scope; when changes affect learning and mastered records | US-07 |
-| D-08 | Failed recitation effect; same-day mixed outcomes and retries; whether success seals day credit | US-05/06/07 |
-| D-09 | Qualifying streak activity, review/failed-attempt eligibility, current-day display and longest-streak display | US-08 |
-| D-10 | Review algorithm/intervals, due representation, anchors, early/overdue/repeated reviews, failure/demotion and policy changes | US-09 |
-| D-11 | Accessibility target, browser/device matrix, PWA installation details, offline reader scope and offline writes/sync | US-10 |
-| D-12 | Timezone selection/changes, authoritative event boundary, midnight attribution, backdating/offline activity and rebucketing | All daily behaviour |
-| D-13 | Input/audio/duration limits, timeouts, abuse controls and measurable performance targets | Validation, voice, operations |
+| ID   | Decision to resolve                                                                                                                                                                                   | Affected scope                |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| D-01 | KJV Protestant-66, public reading, canonical previous/next chapter navigation, and verbatim inline annotations approved; search and future collection scope remain open                               | US-01                         |
+| D-02 | Better Auth email/password and native opaque sessions approved; fixed seven-day sessions configured; verification/recovery delivery, account lifecycle and retention/export remain open               | US-02, security               |
+| D-03 | Archive/delete removal, account default plus per-action override, restore, and delete-then-readd semantics approved; passage learning, pause, and restart without deletion remain open                | US-03, state model            |
+| D-04 | Active learning before due reviews, deterministic persisted order, no daily limit, and persisted cursor approved; post-attempt eligibility remains with D-08                                          | US-04                         |
+| D-05 | Deterministic word alignment and scoring approved as documented above; case, harmless punctuation, whitespace, paragraph markers, source wording/notes, references, and hints have explicit treatment | US-05/06, mastery             |
+| D-06 | Browser versus server speech recognition, provider, language/browser support, transcript correction, audio consent and retention                                                                      | US-06, privacy                |
+| D-07 | Per-user threshold defaults to 3, range 1–30; changes apply on next success without revoking mastery                                                                                                  | US-07                         |
+| D-08 | Success seals verse-day credit; failures remain attempts but do not erase credit; request retries are idempotent                                                                                      | US-05/06/07                   |
+| D-09 | Any persisted typed assessment qualifies a practice day; review qualification and streak display details remain open                                                                                  | US-08                         |
+| D-10 | First review is one local calendar day after mastery; later intervals, anchors, early/overdue/repeated reviews, failure/demotion and policy changes remain open                                       | US-09                         |
+| D-11 | Accessibility target, browser/device matrix, PWA installation details, offline reader scope and offline writes/sync                                                                                   | US-10                         |
+| D-12 | Account IANA zone/default UTC and server acceptance boundary approved for typed practice; travel and offline/backdated behavior remain open                                                           | All daily behaviour           |
+| D-13 | Typed input limit approved at 10,000 Unicode code points and 1,000 normalised words; voice and broader operational limits remain open                                                                 | Validation, voice, operations |
 
 ## 9. Non-goals and deferred features
 
@@ -288,8 +330,8 @@ social feeds, leaderboards, sharing groups, AI commentary, subscriptions, and
 administrative dashboards. No microservices, event bus, or separate scheduling
 service is justified by the current requirements.
 
-Deferred pending explicit decisions: passage learning and lifecycle controls
-(D-03), reader search (D-01), reminders/push notifications, offline progress sync
+Deferred pending explicit decisions: passage learning, pause, and restart without
+deletion (D-03), reader search (D-01), reminders/push notifications, offline progress sync
 (D-11), transcript editing and retained recordings (D-06), and advanced learning
 analytics. Do not promise these or implement them incidentally.
 

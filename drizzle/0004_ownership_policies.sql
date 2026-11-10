@@ -1,0 +1,14 @@
+ALTER TABLE "auth_accounts" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "auth_sessions" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "daily_practice_completions" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "learning_items" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "practice_attempts" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "review_schedules" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "users" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE POLICY "auth_accounts_owner_access" ON "auth_accounts" AS PERMISSIVE FOR ALL TO public USING ("auth_accounts"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid) WITH CHECK ("auth_accounts"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid);--> statement-breakpoint
+CREATE POLICY "auth_sessions_owner_access" ON "auth_sessions" AS PERMISSIVE FOR ALL TO public USING ("auth_sessions"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid) WITH CHECK ("auth_sessions"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid);--> statement-breakpoint
+CREATE POLICY "daily_completion_owner_access" ON "daily_practice_completions" AS PERMISSIVE FOR ALL TO public USING ("daily_practice_completions"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid) WITH CHECK ("daily_practice_completions"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid);--> statement-breakpoint
+CREATE POLICY "learning_items_owner_access" ON "learning_items" AS PERMISSIVE FOR ALL TO public USING ("learning_items"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid) WITH CHECK ("learning_items"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid);--> statement-breakpoint
+CREATE POLICY "practice_attempts_owner_access" ON "practice_attempts" AS PERMISSIVE FOR ALL TO public USING ("practice_attempts"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid) WITH CHECK ("practice_attempts"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid);--> statement-breakpoint
+CREATE POLICY "review_schedules_owner_access" ON "review_schedules" AS PERMISSIVE FOR ALL TO public USING ("review_schedules"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid) WITH CHECK ("review_schedules"."user_id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid);--> statement-breakpoint
+CREATE POLICY "users_owner_access" ON "users" AS PERMISSIVE FOR ALL TO public USING ("users"."id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid) WITH CHECK ("users"."id" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid);

@@ -1,0 +1,1723 @@
+{
+  "id": "fc79f198-81f4-4737-b65c-578c158b08a9",
+  "prevId": "2eeab859-c44a-48a6-afcf-1982bccfe1b0",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.auth_accounts": {
+      "name": "auth_accounts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_account_id": {
+          "name": "provider_account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token_expires_at": {
+          "name": "refresh_token_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "auth_accounts_user_idx": {
+          "name": "auth_accounts_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "auth_accounts_user_id_users_id_fk": {
+          "name": "auth_accounts_user_id_users_id_fk",
+          "tableFrom": "auth_accounts",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "auth_accounts_provider_identity_unique": {
+          "name": "auth_accounts_provider_identity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "provider",
+            "provider_account_id"
+          ]
+        }
+      },
+      "policies": {
+        "auth_accounts_owner_access": {
+          "name": "auth_accounts_owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"auth_accounts\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid",
+          "withCheck": "\"auth_accounts\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid"
+        },
+        "auth_accounts_authentication_access": {
+          "name": "auth_accounts_authentication_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "mathaino_auth"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
+      "checkConstraints": {
+        "auth_accounts_provider_nonempty": {
+          "name": "auth_accounts_provider_nonempty",
+          "value": "btrim(\"auth_accounts\".\"provider\") <> ''"
+        },
+        "auth_accounts_identity_nonempty": {
+          "name": "auth_accounts_identity_nonempty",
+          "value": "btrim(\"auth_accounts\".\"provider_account_id\") <> ''"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.auth_rate_limits": {
+      "name": "auth_rate_limits",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_request": {
+          "name": "last_request",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "auth_rate_limits_key_unique": {
+          "name": "auth_rate_limits_key_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "key"
+          ]
+        }
+      },
+      "policies": {
+        "auth_rate_limits_service_access": {
+          "name": "auth_rate_limits_service_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "mathaino_auth"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
+      "checkConstraints": {
+        "auth_rate_limits_count_nonnegative": {
+          "name": "auth_rate_limits_count_nonnegative",
+          "value": "\"auth_rate_limits\".\"count\" >= 0"
+        },
+        "auth_rate_limits_time_nonnegative": {
+          "name": "auth_rate_limits_time_nonnegative",
+          "value": "\"auth_rate_limits\".\"last_request\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.auth_sessions": {
+      "name": "auth_sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "auth_sessions_user_idx": {
+          "name": "auth_sessions_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "auth_sessions_expiry_idx": {
+          "name": "auth_sessions_expiry_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "auth_sessions_user_id_users_id_fk": {
+          "name": "auth_sessions_user_id_users_id_fk",
+          "tableFrom": "auth_sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "auth_sessions_token_hash_unique": {
+          "name": "auth_sessions_token_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_hash"
+          ]
+        },
+        "auth_sessions_token_unique": {
+          "name": "auth_sessions_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token"
+          ]
+        }
+      },
+      "policies": {
+        "auth_sessions_owner_access": {
+          "name": "auth_sessions_owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"auth_sessions\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid",
+          "withCheck": "\"auth_sessions\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid"
+        },
+        "auth_sessions_authentication_access": {
+          "name": "auth_sessions_authentication_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "mathaino_auth"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
+      "checkConstraints": {
+        "auth_sessions_hash_sha256": {
+          "name": "auth_sessions_hash_sha256",
+          "value": "\"auth_sessions\".\"token_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "auth_sessions_valid_lifetime": {
+          "name": "auth_sessions_valid_lifetime",
+          "value": "\"auth_sessions\".\"expires_at\" > \"auth_sessions\".\"created_at\""
+        },
+        "auth_sessions_one_credential": {
+          "name": "auth_sessions_one_credential",
+          "value": "(\"auth_sessions\".\"token_hash\" is not null) <> (\"auth_sessions\".\"token\" is not null)"
+        },
+        "auth_sessions_token_nonempty": {
+          "name": "auth_sessions_token_nonempty",
+          "value": "\"auth_sessions\".\"token\" is null or btrim(\"auth_sessions\".\"token\") <> ''"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.auth_verifications": {
+      "name": "auth_verifications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "auth_verifications_identifier_idx": {
+          "name": "auth_verifications_identifier_idx",
+          "columns": [
+            {
+              "expression": "identifier",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "auth_verifications_expiry_idx": {
+          "name": "auth_verifications_expiry_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "auth_verifications_service_access": {
+          "name": "auth_verifications_service_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "mathaino_auth"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.bible_books": {
+      "name": "bible_books",
+      "schema": "",
+      "columns": {
+        "translation_id": {
+          "name": "translation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "bible_books_translation_id_id_pk": {
+          "name": "bible_books_translation_id_id_pk",
+          "columns": [
+            "translation_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "bible_books_translation_order_unique": {
+          "name": "bible_books_translation_order_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "translation_id",
+            "sort_order"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "bible_books_order_positive": {
+          "name": "bible_books_order_positive",
+          "value": "\"bible_books\".\"sort_order\" > 0"
+        },
+        "bible_books_translation_nonempty": {
+          "name": "bible_books_translation_nonempty",
+          "value": "btrim(\"bible_books\".\"translation_id\") <> ''"
+        },
+        "bible_books_id_nonempty": {
+          "name": "bible_books_id_nonempty",
+          "value": "btrim(\"bible_books\".\"id\") <> ''"
+        },
+        "bible_books_name_nonempty": {
+          "name": "bible_books_name_nonempty",
+          "value": "btrim(\"bible_books\".\"name\") <> ''"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.bible_chapters": {
+      "name": "bible_chapters",
+      "schema": "",
+      "columns": {
+        "translation_id": {
+          "name": "translation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "book_id": {
+          "name": "book_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "bible_chapters_book_fk": {
+          "name": "bible_chapters_book_fk",
+          "tableFrom": "bible_chapters",
+          "tableTo": "bible_books",
+          "columnsFrom": [
+            "translation_id",
+            "book_id"
+          ],
+          "columnsTo": [
+            "translation_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "bible_chapters_translation_id_book_id_id_pk": {
+          "name": "bible_chapters_translation_id_book_id_id_pk",
+          "columns": [
+            "translation_id",
+            "book_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "bible_chapters_book_order_unique": {
+          "name": "bible_chapters_book_order_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "translation_id",
+            "book_id",
+            "sort_order"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "bible_chapters_id_nonempty": {
+          "name": "bible_chapters_id_nonempty",
+          "value": "btrim(\"bible_chapters\".\"id\") <> ''"
+        },
+        "bible_chapters_order_positive": {
+          "name": "bible_chapters_order_positive",
+          "value": "\"bible_chapters\".\"sort_order\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.bible_verses": {
+      "name": "bible_verses",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "translation_id": {
+          "name": "translation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "book_id": {
+          "name": "book_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter": {
+          "name": "chapter",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verse": {
+          "name": "verse",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "bible_verses_book_fk": {
+          "name": "bible_verses_book_fk",
+          "tableFrom": "bible_verses",
+          "tableTo": "bible_books",
+          "columnsFrom": [
+            "translation_id",
+            "book_id"
+          ],
+          "columnsTo": [
+            "translation_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "bible_verses_chapter_fk": {
+          "name": "bible_verses_chapter_fk",
+          "tableFrom": "bible_verses",
+          "tableTo": "bible_chapters",
+          "columnsFrom": [
+            "translation_id",
+            "book_id",
+            "chapter"
+          ],
+          "columnsTo": [
+            "translation_id",
+            "book_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "bible_verses_reference_unique": {
+          "name": "bible_verses_reference_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "translation_id",
+            "book_id",
+            "chapter",
+            "verse"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "bible_verses_chapter_nonempty": {
+          "name": "bible_verses_chapter_nonempty",
+          "value": "btrim(\"bible_verses\".\"chapter\") <> ''"
+        },
+        "bible_verses_verse_nonempty": {
+          "name": "bible_verses_verse_nonempty",
+          "value": "btrim(\"bible_verses\".\"verse\") <> ''"
+        },
+        "bible_verses_text_nonempty": {
+          "name": "bible_verses_text_nonempty",
+          "value": "btrim(\"bible_verses\".\"text\") <> ''"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.daily_practice_completions": {
+      "name": "daily_practice_completions",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "practice_date": {
+          "name": "practice_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_attempt_id": {
+          "name": "source_attempt_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time_zone": {
+          "name": "time_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_policy": {
+          "name": "day_policy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "daily_completion_attempt_idx": {
+          "name": "daily_completion_attempt_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_attempt_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "practice_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "daily_completion_owned_day_attempt_fk": {
+          "name": "daily_completion_owned_day_attempt_fk",
+          "tableFrom": "daily_practice_completions",
+          "tableTo": "practice_attempts",
+          "columnsFrom": [
+            "user_id",
+            "source_attempt_id",
+            "practice_date"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id",
+            "practice_date"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "daily_practice_completions_user_id_practice_date_pk": {
+          "name": "daily_practice_completions_user_id_practice_date_pk",
+          "columns": [
+            "user_id",
+            "practice_date"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "daily_completion_owner_access": {
+          "name": "daily_completion_owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"daily_practice_completions\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid",
+          "withCheck": "\"daily_practice_completions\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "daily_completion_zone_nonempty": {
+          "name": "daily_completion_zone_nonempty",
+          "value": "btrim(\"daily_practice_completions\".\"time_zone\") <> ''"
+        },
+        "daily_completion_policy_nonempty": {
+          "name": "daily_completion_policy_nonempty",
+          "value": "btrim(\"daily_practice_completions\".\"day_policy\") <> ''"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.learning_items": {
+      "name": "learning_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verse_id": {
+          "name": "verse_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'learning'"
+        },
+        "mastered_at": {
+          "name": "mastered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "queue_order": {
+          "name": "queue_order",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "learning_items_queue_order_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "learning_items_user_state_idx": {
+          "name": "learning_items_user_state_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "learning_items_active_queue_idx": {
+          "name": "learning_items_active_queue_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "queue_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"learning_items\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "learning_items_verse_idx": {
+          "name": "learning_items_verse_idx",
+          "columns": [
+            {
+              "expression": "verse_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "learning_items_user_id_users_id_fk": {
+          "name": "learning_items_user_id_users_id_fk",
+          "tableFrom": "learning_items",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "learning_items_verse_id_bible_verses_id_fk": {
+          "name": "learning_items_verse_id_bible_verses_id_fk",
+          "tableFrom": "learning_items",
+          "tableTo": "bible_verses",
+          "columnsFrom": [
+            "verse_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "learning_items_user_verse_unique": {
+          "name": "learning_items_user_verse_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "verse_id"
+          ]
+        },
+        "learning_items_owner_id_unique": {
+          "name": "learning_items_owner_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "id"
+          ]
+        },
+        "learning_items_owner_id_state_unique": {
+          "name": "learning_items_owner_id_state_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "id",
+            "state"
+          ]
+        }
+      },
+      "policies": {
+        "learning_items_owner_access": {
+          "name": "learning_items_owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"learning_items\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid",
+          "withCheck": "\"learning_items\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "learning_items_state_valid": {
+          "name": "learning_items_state_valid",
+          "value": "\"learning_items\".\"state\" in ('learning', 'mastered')"
+        },
+        "learning_items_mastery_consistent": {
+          "name": "learning_items_mastery_consistent",
+          "value": "(\"learning_items\".\"state\" = 'mastered') = (\"learning_items\".\"mastered_at\" is not null)"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.learning_preferences": {
+      "name": "learning_preferences",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "removal_policy": {
+          "name": "removal_policy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'archive'"
+        },
+        "current_learning_item_id": {
+          "name": "current_learning_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "queue_version": {
+          "name": "queue_version",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "learning_preferences_user_id_users_id_fk": {
+          "name": "learning_preferences_user_id_users_id_fk",
+          "tableFrom": "learning_preferences",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "learning_preferences_owned_current_item_fk": {
+          "name": "learning_preferences_owned_current_item_fk",
+          "tableFrom": "learning_preferences",
+          "tableTo": "learning_items",
+          "columnsFrom": [
+            "user_id",
+            "current_learning_item_id"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "learning_preferences_owner_access": {
+          "name": "learning_preferences_owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"learning_preferences\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid",
+          "withCheck": "\"learning_preferences\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "learning_preferences_removal_policy_valid": {
+          "name": "learning_preferences_removal_policy_valid",
+          "value": "\"learning_preferences\".\"removal_policy\" in ('archive', 'delete')"
+        },
+        "learning_preferences_queue_version_nonnegative": {
+          "name": "learning_preferences_queue_version_nonnegative",
+          "value": "\"learning_preferences\".\"queue_version\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.practice_attempts": {
+      "name": "practice_attempts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learning_item_id": {
+          "name": "learning_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operation_id": {
+          "name": "operation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "request_hash": {
+          "name": "request_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mode": {
+          "name": "mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "practiced_at": {
+          "name": "practiced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "practice_date": {
+          "name": "practice_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time_zone": {
+          "name": "time_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assessment_policy": {
+          "name": "assessment_policy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_policy": {
+          "name": "day_policy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "practice_attempts_item_time_idx": {
+          "name": "practice_attempts_item_time_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learning_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "practiced_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "practice_attempts_user_day_idx": {
+          "name": "practice_attempts_user_day_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "practice_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "practice_attempts_owned_item_fk": {
+          "name": "practice_attempts_owned_item_fk",
+          "tableFrom": "practice_attempts",
+          "tableTo": "learning_items",
+          "columnsFrom": [
+            "user_id",
+            "learning_item_id"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "practice_attempts_user_operation_unique": {
+          "name": "practice_attempts_user_operation_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "operation_id"
+          ]
+        },
+        "practice_attempts_owner_id_day_unique": {
+          "name": "practice_attempts_owner_id_day_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "id",
+            "practice_date"
+          ]
+        }
+      },
+      "policies": {
+        "practice_attempts_owner_access": {
+          "name": "practice_attempts_owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"practice_attempts\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid",
+          "withCheck": "\"practice_attempts\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "practice_attempts_mode_valid": {
+          "name": "practice_attempts_mode_valid",
+          "value": "\"practice_attempts\".\"mode\" in ('typing', 'voice')"
+        },
+        "practice_attempts_purpose_valid": {
+          "name": "practice_attempts_purpose_valid",
+          "value": "\"practice_attempts\".\"purpose\" in ('learning', 'review')"
+        },
+        "practice_attempts_outcome_valid": {
+          "name": "practice_attempts_outcome_valid",
+          "value": "\"practice_attempts\".\"outcome\" in ('success', 'failure')"
+        },
+        "practice_attempts_hash_sha256": {
+          "name": "practice_attempts_hash_sha256",
+          "value": "\"practice_attempts\".\"request_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "practice_attempts_zone_nonempty": {
+          "name": "practice_attempts_zone_nonempty",
+          "value": "btrim(\"practice_attempts\".\"time_zone\") <> ''"
+        },
+        "practice_attempts_assessment_nonempty": {
+          "name": "practice_attempts_assessment_nonempty",
+          "value": "btrim(\"practice_attempts\".\"assessment_policy\") <> ''"
+        },
+        "practice_attempts_day_policy_nonempty": {
+          "name": "practice_attempts_day_policy_nonempty",
+          "value": "btrim(\"practice_attempts\".\"day_policy\") <> ''"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.review_schedules": {
+      "name": "review_schedules",
+      "schema": "",
+      "columns": {
+        "learning_item_id": {
+          "name": "learning_item_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learning_state": {
+          "name": "learning_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'mastered'"
+        },
+        "next_due_at": {
+          "name": "next_due_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_reviewed_at": {
+          "name": "last_reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "policy_id": {
+          "name": "policy_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "review_schedules_owner_item_idx": {
+          "name": "review_schedules_owner_item_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learning_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learning_state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "review_schedules_user_due_idx": {
+          "name": "review_schedules_user_due_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "next_due_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "review_schedules_owned_mastered_item_fk": {
+          "name": "review_schedules_owned_mastered_item_fk",
+          "tableFrom": "review_schedules",
+          "tableTo": "learning_items",
+          "columnsFrom": [
+            "user_id",
+            "learning_item_id",
+            "learning_state"
+          ],
+          "columnsTo": [
+            "user_id",
+            "id",
+            "state"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "review_schedules_owner_access": {
+          "name": "review_schedules_owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"review_schedules\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid",
+          "withCheck": "\"review_schedules\".\"user_id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid"
+        }
+      },
+      "checkConstraints": {
+        "review_schedules_mastered_only": {
+          "name": "review_schedules_mastered_only",
+          "value": "\"review_schedules\".\"learning_state\" = 'mastered'"
+        },
+        "review_schedules_policy_nonempty": {
+          "name": "review_schedules_policy_nonempty",
+          "value": "btrim(\"review_schedules\".\"policy_id\") <> ''"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {
+        "users_owner_access": {
+          "name": "users_owner_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "public"
+          ],
+          "using": "\"users\".\"id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid",
+          "withCheck": "\"users\".\"id\" = nullif((select current_setting('mathaino.user_id', true)), '')::uuid"
+        },
+        "users_authentication_access": {
+          "name": "users_authentication_access",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "mathaino_auth"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        }
+      },
+      "checkConstraints": {
+        "users_email_canonical": {
+          "name": "users_email_canonical",
+          "value": "\"users\".\"email\" = lower(btrim(\"users\".\"email\"))"
+        }
+      },
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

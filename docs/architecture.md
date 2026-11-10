@@ -2,8 +2,12 @@
 
 Status: architecture baseline. The foundation now uses Next.js App Router, strict
 TypeScript, Tailwind CSS, Drizzle/PostgreSQL, Vitest/React Testing Library, and
-Playwright. Product modules, application tables, authentication, and speech
-integration remain unimplemented. See [development.md](development.md).
+Playwright. PostgreSQL tables, migrations, forced ownership policies, seed
+infrastructure, and a trusted-authentication context port are implemented.
+Better Auth email/password, protected pages, owned learning lifecycle operations,
+the deterministic Today queue, and typed assessment are implemented; speech and
+due-review outcomes remain open.
+See [development.md](development.md) and [database.md](database.md).
 
 Read with [requirements.md](requirements.md) and [AGENTS.md](../AGENTS.md).
 US-xx and D-xx identifiers refer to stories and unresolved decisions in the
@@ -44,13 +48,13 @@ event bus, microservices, or a separate queue/scheduler service.
 
 These are logical boundaries, not a requirement for separate packages.
 
-| Module | Owns | Main stories |
-| --- | --- | --- |
-| Bible | Validated catalogue, reference resolution, chapter and verse retrieval | US-01, US-03 |
-| Identity and settings | Trusted account context, practice settings, effective timezone policy | US-02, US-07 |
-| Learning and recitation | Learning records, assessment, successful-day runs, mastery transitions | US-03, US-05, US-06, US-07 |
-| Practice | Daily learning queue and account-wide qualifying activity/streak projection | US-04, US-08 |
-| Reviews | Review policy, next-due evaluation, review outcomes | US-09 |
+| Module                  | Owns                                                                        | Main stories               |
+| ----------------------- | --------------------------------------------------------------------------- | -------------------------- |
+| Bible                   | Validated catalogue, reference resolution, chapter and verse retrieval      | US-01, US-03               |
+| Identity and settings   | Trusted account context, practice settings, effective timezone policy       | US-02, US-07               |
+| Learning and recitation | Learning records, assessment, successful-day runs, mastery transitions      | US-03, US-05, US-06, US-07 |
+| Practice                | Daily learning queue and account-wide qualifying activity/streak projection | US-04, US-08               |
+| Reviews                 | Review policy, next-due evaluation, review outcomes                         | US-09                      |
 
 The UI delegates decisions to use cases. For example, it displays queue results,
 not its own calculation of which items qualify. Modules collaborate through
@@ -60,21 +64,22 @@ domain types, not a catch-all shared-utilities layer.
 
 ## 3. Conceptual domain model
 
-These are concepts and relationships, **not a database schema**. Field types,
-indexes, storage engine, and migration strategy will be designed when required.
+These are concepts and relationships. Their initial PostgreSQL representation,
+types, indexes, migrations, and cleanup rules are documented in
+[database.md](database.md).
 
-| Concept | Identity and meaning | Relationships / invariants |
-| --- | --- | --- |
-| Translation | Known local translation ID and metadata | Contains books; `en-kjv` is the existing source |
-| Book / chapter / verse | Validated source identifiers, display metadata and original verse text | Translation -> books -> chapters -> verses; availability comes from source, not numeric assumptions |
-| Verse reference | Translation, book, chapter, and verse identity | Resolves to one known local verse; does not contain a user-controlled path |
-| User account | Internal identity resolved from verified authentication | Owns private settings and learning records; authentication credentials stay outside domain learning logic |
-| Practice settings | Effective mastery threshold and approved day-attribution configuration | Belongs to one user; threshold scope/change semantics are D-07 |
-| Learning record | One user's progress for one verse | Unique account/reference pair; learning or mastered; retains sufficient successful-day and mastery context |
-| Recitation attempt | One logical submitted practice operation and assessed outcome | Belongs to a learning record; typing/voice mode, accepted time context, approved policy context and outcome; no raw audio required |
-| Daily activity | Evidence that approved activity qualified on a calendar date | Belongs to one user; supports streak derivation without counting repeated activity twice |
-| Review schedule | Effective scheduling state for a mastered item | Belongs to a learning record; next due and necessary policy state determined by D-10 |
-| Review outcome | Accepted review result and its scheduling effect | Belongs to the same owner's learning record; can reference the recitation attempt rather than duplicate it |
+| Concept                | Identity and meaning                                                   | Relationships / invariants                                                                                                         |
+| ---------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Translation            | Known local translation ID and metadata                                | Contains books; `en-kjv` is the existing source                                                                                    |
+| Book / chapter / verse | Validated source identifiers, display metadata and original verse text | Translation -> books -> chapters -> verses; availability comes from source, not numeric assumptions                                |
+| Verse reference        | Translation, book, chapter, and verse identity                         | Resolves to one known local verse; does not contain a user-controlled path                                                         |
+| User account           | Internal identity resolved from verified authentication                | Owns private settings and learning records; authentication credentials stay outside domain learning logic                          |
+| Practice settings      | Effective mastery threshold and approved day-attribution configuration | Belongs to one user; threshold scope/change semantics are D-07                                                                     |
+| Learning record        | One user's progress for one verse                                      | Unique account/reference pair; learning or mastered; retains sufficient successful-day and mastery context                         |
+| Recitation attempt     | One logical submitted practice operation and assessed outcome          | Belongs to a learning record; typing/voice mode, accepted time context, approved policy context and outcome; no raw audio required |
+| Daily activity         | Evidence that approved activity qualified on a calendar date           | Belongs to one user; supports streak derivation without counting repeated activity twice                                           |
+| Review schedule        | Effective scheduling state for a mastered item                         | Belongs to a learning record; next due and necessary policy state determined by D-10                                               |
+| Review outcome         | Accepted review result and its scheduling effect                       | Belongs to the same owner's learning record; can reference the recitation attempt rather than duplicate it                         |
 
 ```text
 Translation -> Book -> Chapter -> Verse
@@ -107,8 +112,9 @@ store only the facts needed for correctness and the approved product experience.
 4. For adding to learning, authenticate, resolve the owner's account, then create
    a learning record only if the account/reference pair is not already present.
 
-Reading is public only if D-01 approves it. Private mutation always requires
-authentication. Unknown references are not guessed or mapped to arbitrary paths.
+Reading is public. Private mutation always requires authentication. Unknown
+references are not guessed or mapped to arbitrary paths. The browser receives
+catalogue metadata and one chapter of verse text rather than the full corpus.
 
 ### Recitation and progress update
 
@@ -120,7 +126,9 @@ authentication. Unknown references are not guessed or mapped to arbitrary paths.
 4. Assess through a pure domain function; do not accept client-supplied success,
    counters, mastery state, due dates, or day credit.
 5. Apply the attempt, per-verse day effect, mastery transition, qualifying practice
-   activity, and any review scheduling change as one consistent commit.
+   activity, and first-review scheduling as one consistent commit. Initial typed
+   practice uses the approved three-day default, account IANA zone, success-seals-
+   the-day rule, and first review one local calendar day after mastery.
 6. Return committed state for rendering. Repeated submission of the same logical
    operation returns the existing result without awarding progress again.
 
@@ -144,9 +152,13 @@ so they can be tested independently and coordinated by a small use case.
 - A successful assessment is not automatically another successful day.
 - An item becomes mastered only after its effective consecutive-day threshold.
 - Review due is a derived condition, not another mastery state.
+- Queue position is an owner-scoped preference updated with an expected version;
+  stale navigation reloads authoritative progress instead of overwriting it.
+- Stable queue order is assigned once when an item is created. Archive/restore
+  retains it; permanent deletion followed by adding creates a new position.
 - Technical speech or validation failures do not enter the failure/reset policy.
-- D-07/D-08/D-10 must settle setting changes, mixed day outcomes, and review
-  failure/demotion before those branches are implemented.
+- Later review outcomes still require D-10. Initial typed learning may create the
+  approved first-review schedule but does not accept due-review submissions.
 
 ## 5. Day attribution, streaks, and scheduling
 
@@ -155,8 +167,10 @@ time inputs. The application obtains the current instant through an injected
 clock; adapters handle serialization and external timezone configuration.
 
 The proposed IANA-zone/server-clock approach in requirements section 5 is pending
-D-12. If adopted, retain the accepted instant, attributed local date, and zone
-context needed to interpret activity consistently. Never compare date labels
+D-12. Storage supports an explicit practice instant, attributed date, and zone
+without choosing attribution rules. If adopted, retain the accepted instant,
+attributed local date, and zone context needed to interpret activity consistently.
+Never compare date labels
 lexicographically across unvalidated formats or treat a day as 86,400 seconds.
 
 Per-verse successful-day runs and account-wide streaks consume different facts:
@@ -165,11 +179,14 @@ activity D-09 qualifies. Do not derive one counter from the other. Midnight/DST,
 current-day display, travel, and offline submissions require explicit examples.
 
 For reviews, evaluate due eligibility at read time using the approved policy.
-No background job is necessary merely to discover a due item. The application
-atomically applies each accepted review's schedule effect. D-10 must choose
-intervals/algorithm, due dates versus instants, late/early anchors, repeated
+No background job is necessary merely to discover a due item. Initial mastery
+schedules the first review one local calendar day later. The application
+atomically applies each accepted later review's schedule effect. D-10 must choose
+later intervals/algorithm, late/early anchors, repeated
 same-day reviews, failed recall, and future policy changes. Do not install a
 spaced-repetition dependency or scheduler before that choice is justified.
+The user selected timezone-aware next-due instants for schema storage; that part
+of D-10 is resolved, without selecting scheduling intervals or day boundaries.
 
 ## 6. Local KJV infrastructure
 
@@ -183,8 +200,10 @@ and returned records, including duplicate/mismatched records.
 Determine a source-of-truth strategy for duplicated chapter/verse content during
 adapter implementation: inspect and test consistency rather than silently prefer
 one when the two conflict. Missing/corrupt data produces an explicit failure.
-Book order and display rules are D-01. A complete source inventory/validation is
-needed before claiming full-reader coverage; representative samples are not proof.
+The KJV Protestant canonical order and source display names are now explicitly
+validated for the approved import. Other presentation choices remain D-01.
+Complete inventory/validation precedes full-reader coverage claims; samples alone
+are not proof.
 
 Known source identifiers form a lookup into safe local resources. Never construct
 a filesystem path from unchecked request fragments. If deployment needs a
@@ -194,6 +213,11 @@ small payload strategy rather than eagerly loading the full corpus into the UI.
 
 Preserve inline annotations and paragraph markers. Any derived comparison text
 must have an approved D-05 policy and separate tests; source text is immutable.
+
+The KJV import adapter, explicit chapter/order storage, duplicate policy, and
+observed coverage are documented in [kjv-source.md](kjv-source.md). The user
+selected the Protestant 66; additional source books are reported as excluded.
+Future translations can use the application import ports with their own adapters.
 
 ## 7. Transcription architecture and failure handling
 
@@ -216,14 +240,14 @@ Conceptual capture/transcription states are idle, requesting permission,
 capturing, transcribing, ready, cancelled, and error. These are interaction states,
 not learning states. Interim results may be displayed but never credited.
 
-| Failure | Required behaviour |
-| --- | --- |
-| Unsupported API, permission denied, or no device | Explain limitation and retain the typing path |
-| Silence/no usable transcript | No assessment credit or penalty; allow explicit retry |
-| Provider timeout/network/malformed response | Return recoverable transcription error; do not assess incomplete text |
-| User cancels or leaves capture | Stop capture, release microphone, abort where possible, ignore stale late results |
-| Authentication expires during transcription | Do not commit against stale auth; re-authenticate and reconcile before resubmission |
-| Assessment persistence fails or response is lost | Report unsaved/unknown outcome accurately; reconcile idempotently |
+| Failure                                          | Required behaviour                                                                  |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Unsupported API, permission denied, or no device | Explain limitation and retain the typing path                                       |
+| Silence/no usable transcript                     | No assessment credit or penalty; allow explicit retry                               |
+| Provider timeout/network/malformed response      | Return recoverable transcription error; do not assess incomplete text               |
+| User cancels or leaves capture                   | Stop capture, release microphone, abort where possible, ignore stale late results   |
+| Authentication expires during transcription      | Do not commit against stale auth; re-authenticate and reconcile before resubmission |
+| Assessment persistence fails or response is lost | Report unsaved/unknown outcome accurately; reconcile idempotently                   |
 
 Validate audio payloads and provider responses as unknown inputs. Bounds,
 timeouts, rate/cost controls, consent, retention, and transcript correction need
@@ -236,7 +260,7 @@ sanitized operational errors; not raw audio or full transcripts.
 - **Untrusted browser:** references, settings, text/audio, timestamps, operation
   identities, service-worker messages, and cached private data need validation.
 - **Authentication boundary:** verify sessions/tokens server-side and resolve
-  trusted internal identity. Provider choice is D-02; credentials and privileged
+  trusted internal identity through Better Auth. Remaining auth decisions are D-02; credentials and privileged
   service keys never enter the browser bundle.
 - **Application boundary:** enforce valid operations and reject unknown or
   out-of-bounds input. Return safe errors without credentials or private payloads.
@@ -248,9 +272,9 @@ sanitized operational errors; not raw audio or full transcripts.
 - **Local Bible boundary:** validated known-identifier lookup; source files remain
   read-only. Render verse text as text, not executable markup.
 
-Use HTTPS in deployment. Select session transport with its corresponding CSRF,
-cookie/token handling, and expiry controls when choosing authentication. No
-particular mechanism is assumed. Cross-user denial must cover account settings,
+Use HTTPS in deployment. Better Auth owns cookie signing, scrypt, expiry, and
+database sessions; strict origins and the public HTTP adapter constrain requests.
+See [authentication.md](authentication.md). Cross-user denial must cover account settings,
 learning items, attempts, daily activity, schedules, and review outcomes.
 
 ## 9. PWA and UI boundary
@@ -341,8 +365,8 @@ PWA/offline capabilities. Accessibility and responsive behaviour apply throughou
 not only at the end. This is a dependency guide, not a delivery commitment.
 
 The product decision register D-01 through D-13 is in requirements. Technical
-choices still open are feature-specific transaction/concurrency mechanisms, auth
-provider/session mechanism, transcription placement/provider, hosting, timezone
+choices still open are feature-specific transaction/concurrency mechanisms,
+auth delivery/recovery policy, transcription placement/provider, hosting, timezone
 implementation, and PWA tooling. The selected foundation stack and commands are
 documented in [development.md](development.md). Prefer platform capabilities and
 few dependencies; justify each selection against an actual requirement.

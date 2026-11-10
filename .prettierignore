@@ -1,4 +1,4 @@
-bible/
+/bible/
 node_modules/
 .next/
 coverage/
@@ -6,3 +6,5 @@ playwright-report/
 test-results/
 package-lock.json
 next-env.d.ts
+reports/
+.test-tmp/
