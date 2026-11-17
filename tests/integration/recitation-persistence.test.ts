@@ -91,6 +91,22 @@ test("successful and failed submissions persist assessed attempts and progress f
     });
   }));
 
+test("persists voice transcripts as voice attempts without storing audio", () =>
+  withTestDatabase(async (db) => {
+    await prepare(db);
+    const service = createRecitationService(createRecitationAttemptStore(db));
+    await service.submit(auth(aliceId), {
+      ...command("Fixture text annotation"),
+      mode: "voice",
+    });
+
+    await asFixtureUser(db, aliceId, async (tx) => {
+      expect(
+        (await tx.execute(sql`select mode from practice_attempts`)).rows,
+      ).toEqual([{ mode: "voice" }]);
+    });
+  }));
+
 test("same-operation retries are idempotent and conflicting reuse is rejected", () =>
   withTestDatabase(async (db) => {
     await prepare(db);
@@ -206,6 +222,9 @@ test("foreign learning items are indistinguishable from missing items", () =>
     await prepare(db);
     const service = createRecitationService(createRecitationAttemptStore(db));
     await expect(
-      service.submit(auth(bobId), command("Fixture text annotation")),
+      service.submit(auth(bobId), {
+        ...command("Fixture text annotation"),
+        mode: "voice",
+      }),
     ).rejects.toBeInstanceOf(RecitationNotFoundError);
   }));

@@ -278,9 +278,37 @@ button {
   font-size: clamp(1.65rem, 5vw, 2.35rem);
   line-height: 1.5;
 }
-.typed-recitation {
+.typed-recitation,
+.voice-recitation,
+.recitation-practice {
   display: grid;
   gap: 1.5rem;
+}
+.recitation-mode-switch,
+.voice-recitation > button {
+  width: fit-content;
+  min-height: 2.75rem;
+  border: 1px solid var(--teal);
+  border-radius: 999px;
+  padding-inline: 1.1rem;
+  background: white;
+  color: var(--teal-dark);
+  font-weight: 650;
+  cursor: pointer;
+}
+.voice-recitation > button:first-of-type {
+  border-radius: 0.35rem;
+  background: var(--teal);
+  color: white;
+}
+.voice-recitation > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.voice-recitation [role="alert"] {
+  margin: 0;
+  color: #9a2f26;
+  font-weight: 650;
 }
 .verse-reveal {
   padding-bottom: 1.5rem;

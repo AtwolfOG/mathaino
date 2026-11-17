@@ -41,7 +41,7 @@ export function createRecitationAttemptStore(
           JSON.stringify({
             version: 1,
             itemId: command.itemId,
-            mode: "typing",
+            mode: command.mode ?? "typing",
             assessmentPolicy: assessmentPolicy,
             text: command.text,
           }),
@@ -98,7 +98,7 @@ export function createRecitationAttemptStore(
             throw new RecitationNotFoundError("Learning item not found.");
           if (target.archivedAt || target.state !== "learning")
             throw new RecitationIneligibleError(
-              "Only active learning items accept typed recitations.",
+              "Only active learning items accept recitations.",
             );
 
           await transaction
@@ -125,7 +125,7 @@ export function createRecitationAttemptStore(
               learningItemId: target.id,
               operationId: command.operationId,
               requestHash,
-              mode: "typing",
+              mode: command.mode ?? "typing",
               purpose: "learning",
               outcome: evaluation.passed ? "success" : "failure",
               practicedAt: now,

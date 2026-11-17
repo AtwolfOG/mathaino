@@ -58,7 +58,7 @@
     "db:migrate": "node --conditions=react-server scripts/migrate.mts",
     "db:seed": "node --conditions=react-server scripts/seed.mts",
     "bible:import": "node --conditions=react-server scripts/import-kjv.mts",
-    "format": "prettier --write src tests scripts \"*.{ts,mts,mjs,json,yaml}\" README.md \"docs/{development,setup-verification,database,kjv-source,authentication}.md\"",
-    "format:check": "prettier --check src tests scripts \"*.{ts,mts,mjs,json,yaml}\" README.md \"docs/{development,setup-verification,database,kjv-source,authentication}.md\""
+    "format": "prettier --write src tests scripts \"*.{ts,mts,mjs,json,yaml}\" README.md \"docs/{development,setup-verification,database,kjv-source,authentication,architecture,requirements,voice-recitation}.md\"",
+    "format:check": "prettier --check src tests scripts \"*.{ts,mts,mjs,json,yaml}\" README.md \"docs/{development,setup-verification,database,kjv-source,authentication,architecture,requirements,voice-recitation}.md\""
   }
 }

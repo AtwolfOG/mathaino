@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { LearningQueueView } from "../../application/learning-queue.ts";
-import { TypedRecitation, VerseReveal } from "./typed-recitation.tsx";
+import { RecitationPractice } from "./recitation-practice.tsx";
+import { VerseReveal } from "./typed-recitation.tsx";
 
 export function TodayPractice({
   initialQueue,
@@ -78,7 +79,7 @@ export function TodayPractice({
           {item.bookName} {item.chapter}:{item.verse}
         </h2>
         {item.status === "learning" ? (
-          <TypedRecitation
+          <RecitationPractice
             key={item.id}
             itemId={item.id}
             reference={`${item.bookName} ${item.chapter}:${item.verse}`}

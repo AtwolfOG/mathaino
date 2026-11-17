@@ -6,11 +6,12 @@ import {
   useState,
   type FormEvent,
   type KeyboardEvent,
+  type RefObject,
 } from "react";
 import type { RecitationResult } from "../../application/recitation.ts";
 import type { WordDifference } from "../../domain/recitation-evaluation.ts";
 
-interface TypedRecitationProps {
+export interface TypedRecitationProps {
   itemId: string;
   reference: string;
   verseText: string;
@@ -121,39 +122,57 @@ export function TypedRecitation({
       </form>
       {error ? <p role="alert">{error}</p> : null}
       {result ? (
-        <section className="recitation-result" aria-label="Recitation result">
-          <h3 ref={resultRef} tabIndex={-1}>
-            {result.evaluation.passed ? "Passed" : "Keep practising"}
-          </h3>
-          <strong>{result.evaluation.accuracy}% accuracy</strong>
-          {result.evaluation.differences.length === 0 ? (
-            <p>No word differences.</p>
-          ) : (
-            <ul aria-label="Word differences">
-              {result.evaluation.differences.map((difference, index) => (
-                <li
-                  key={`${difference.type}-${difference.expectedIndex}-${difference.submittedIndex}-${index}`}
-                >
-                  {differenceText(difference)}
-                </li>
-              ))}
-            </ul>
-          )}
-          <p>
-            {result.progress.mastered
-              ? "Verse mastered."
-              : `Mastery progress: ${result.progress.consecutiveDays} of ${result.progress.masteryThreshold} days`}
-          </p>
-          <p>
-            Practice streak: {result.progress.practiceStreak}{" "}
-            {result.progress.practiceStreak === 1 ? "day" : "days"}
-          </p>
-          <button type="button" onClick={retry}>
-            Try again
-          </button>
-        </section>
+        <RecitationFeedback
+          result={result}
+          headingRef={resultRef}
+          onRetry={retry}
+        />
       ) : null}
     </div>
+  );
+}
+
+export function RecitationFeedback({
+  result,
+  headingRef,
+  onRetry,
+}: {
+  result: RecitationResult;
+  headingRef?: RefObject<HTMLHeadingElement | null>;
+  onRetry: () => void;
+}) {
+  return (
+    <section className="recitation-result" aria-label="Recitation result">
+      <h3 ref={headingRef} tabIndex={-1}>
+        {result.evaluation.passed ? "Passed" : "Keep practising"}
+      </h3>
+      <strong>{result.evaluation.accuracy}% accuracy</strong>
+      {result.evaluation.differences.length === 0 ? (
+        <p>No word differences.</p>
+      ) : (
+        <ul aria-label="Word differences">
+          {result.evaluation.differences.map((difference, index) => (
+            <li
+              key={`${difference.type}-${difference.expectedIndex}-${difference.submittedIndex}-${index}`}
+            >
+              {differenceText(difference)}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p>
+        {result.progress.mastered
+          ? "Verse mastered."
+          : `Mastery progress: ${result.progress.consecutiveDays} of ${result.progress.masteryThreshold} days`}
+      </p>
+      <p>
+        Practice streak: {result.progress.practiceStreak}{" "}
+        {result.progress.practiceStreak === 1 ? "day" : "days"}
+      </p>
+      <button type="button" onClick={onRetry}>
+        Try again
+      </button>
+    </section>
   );
 }
 
@@ -189,7 +208,7 @@ function differenceText(difference: WordDifference) {
   return `Expected “${difference.expected}”; typed “${difference.submitted}”`;
 }
 
-function errorMessage(value: unknown) {
+export function errorMessage(value: unknown) {
   return typeof value === "object" &&
     value !== null &&
     "error" in value &&
@@ -198,7 +217,7 @@ function errorMessage(value: unknown) {
     : null;
 }
 
-function isRecitationResult(value: unknown): value is RecitationResult {
+export function isRecitationResult(value: unknown): value is RecitationResult {
   if (typeof value !== "object" || value === null) return false;
   if (
     !("status" in value) ||

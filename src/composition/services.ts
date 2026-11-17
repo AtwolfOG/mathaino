@@ -9,6 +9,9 @@ import { createLearningQueue } from "../infrastructure/database/learning-queue.t
 import { createRecitationAttemptStore } from "../infrastructure/database/recitation.ts";
 import { createRecitationService } from "../application/recitation.ts";
 import { createPracticeSettings } from "../infrastructure/database/practice-settings.ts";
+import { readTranscriptionEnvironment } from "../infrastructure/config/transcription-environment.ts";
+import { createWhisperTranscriptionProvider } from "../infrastructure/transcription/whisper.ts";
+import { createVoiceRecitationService } from "../application/voice-recitation.ts";
 
 async function createServices() {
   const config = readAuthEnvironment(process.env);
@@ -55,4 +58,15 @@ export function getServices() {
     throw error;
   });
   return services;
+}
+
+export async function getVoiceServices() {
+  const base = await getServices();
+  const provider = createWhisperTranscriptionProvider(
+    readTranscriptionEnvironment(process.env),
+  );
+  return {
+    ...base,
+    voiceRecitation: createVoiceRecitationService(provider, base.recitation),
+  };
 }

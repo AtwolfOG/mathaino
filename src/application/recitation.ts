@@ -9,6 +9,7 @@ export interface RecitationCommand {
   itemId: string;
   operationId: string;
   text: string;
+  mode?: "typing" | "voice";
 }
 
 export interface RecitationProgress {

@@ -26,6 +26,13 @@ const queue: LearningQueueView = {
 
 afterEach(() => vi.unstubAllGlobals());
 
+function setMediaDevices(value: MediaDevices | undefined) {
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value,
+  });
+}
+
 test("Today presents one verse with status and queue progress", () => {
   render(<TodayPractice initialQueue={queue} />);
   expect(screen.getByRole("heading", { name: "John 3:16" })).toBeVisible();
@@ -156,6 +163,114 @@ test("an intentional retry clears feedback and focuses a fresh recitation", asyn
   expect(input).toHaveValue("");
   await waitFor(() => expect(input).toHaveFocus());
   expect(screen.queryByText("0% accuracy")).not.toBeInTheDocument();
+});
+
+test("keeps typed recitation available when browser recording is unsupported", () => {
+  setMediaDevices(undefined);
+  vi.stubGlobal("MediaRecorder", undefined);
+  render(<TodayPractice initialQueue={queue} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Voice recording is not supported by this browser.",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Type instead" }));
+  expect(screen.getByLabelText("Type John 3:16")).toBeVisible();
+});
+
+test("explains microphone denial and allows a typed fallback", async () => {
+  setMediaDevices({
+    getUserMedia: vi
+      .fn()
+      .mockRejectedValue(new DOMException("denied", "NotAllowedError")),
+  } as unknown as MediaDevices);
+  class Recorder {
+    static isTypeSupported() {
+      return true;
+    }
+  }
+  vi.stubGlobal("MediaRecorder", Recorder);
+  render(<TodayPractice initialQueue={queue} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Microphone access was denied.",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Type instead" }));
+  expect(screen.getByLabelText("Type John 3:16")).toBeVisible();
+});
+
+test("records a supported browser format and shows the transcript with grading", async () => {
+  const stopTrack = vi.fn();
+  const getUserMedia = vi.fn().mockResolvedValue({
+    getTracks: () => [{ stop: stopTrack }],
+  });
+  setMediaDevices({ getUserMedia } as unknown as MediaDevices);
+
+  class Recorder {
+    static isTypeSupported(type: string) {
+      return type === "audio/ogg;codecs=opus";
+    }
+    state = "inactive";
+    mimeType = "audio/ogg;codecs=opus";
+    ondataavailable: ((event: BlobEvent) => void) | null = null;
+    onstop: (() => void) | null = null;
+    start() {
+      this.state = "recording";
+    }
+    stop() {
+      this.state = "inactive";
+      this.ondataavailable?.({
+        data: new Blob([new Uint8Array([1, 2, 3])], { type: this.mimeType }),
+      } as BlobEvent);
+      this.onstop?.();
+    }
+  }
+  vi.stubGlobal("MediaRecorder", Recorder);
+  let now = 1_000;
+  vi.spyOn(performance, "now").mockImplementation(() => now);
+  const fetch = vi.fn().mockResolvedValue(
+    Response.json(
+      {
+        status: "recorded",
+        transcript: "For God so loved the world",
+        evaluation: {
+          normalizedExpected: "for god so loved the world",
+          normalizedSubmitted: "for god so loved the world",
+          differences: [],
+          accuracy: 100,
+          passed: true,
+          feedback: "Perfect match: no word differences.",
+        },
+        progress: {
+          consecutiveDays: 1,
+          masteryThreshold: 3,
+          mastered: false,
+          practiceStreak: 1,
+        },
+      },
+      { status: 201 },
+    ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(<TodayPractice initialQueue={queue} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+  await screen.findByRole("button", { name: "Stop recording" });
+  now = 2_000;
+  fireEvent.click(screen.getByRole("button", { name: "Stop recording" }));
+
+  await waitFor(() => expect(screen.getByText("100% accuracy")).toBeVisible());
+  expect(screen.getByText("For God so loved the world")).toBeVisible();
+  expect(stopTrack).toHaveBeenCalledOnce();
+  const [url, options] = fetch.mock.calls[0]!;
+  expect(url).toBe("/api/voice-recitation-attempts");
+  expect(options.method).toBe("POST");
+  const body = options.body as FormData;
+  expect(body.get("durationSeconds")).toBe("1");
+  expect((body.get("audio") as File).type).toBe("audio/ogg;codecs=opus");
 });
 
 test("due reviews explain why submission is unavailable", () => {

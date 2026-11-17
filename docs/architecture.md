@@ -5,8 +5,8 @@ TypeScript, Tailwind CSS, Drizzle/PostgreSQL, Vitest/React Testing Library, and
 Playwright. PostgreSQL tables, migrations, forced ownership policies, seed
 infrastructure, and a trusted-authentication context port are implemented.
 Better Auth email/password, protected pages, owned learning lifecycle operations,
-the deterministic Today queue, and typed assessment are implemented; speech and
-due-review outcomes remain open.
+the deterministic Today queue, typed assessment, and server-mediated voice
+recitation are implemented; due-review outcomes remain open.
 See [development.md](development.md) and [database.md](database.md).
 
 Read with [requirements.md](requirements.md) and [AGENTS.md](../AGENTS.md).
@@ -221,14 +221,11 @@ Future translations can use the application import ports with their own adapters
 
 ## 7. Transcription architecture and failure handling
 
-Two viable adapter placements remain open under D-06:
-
-- Browser speech recognition: capability/permission constraints and possible
-  vendor network processing must be understood; a browser API does not guarantee
-  on-device processing or consistent cross-browser support.
-- Browser capture with server-mediated transcription: backend holds provider
-  credentials and validates/limits uploads; adds network, operational, privacy,
-  and cost considerations. Do not select or install a provider yet.
+Voice recitation uses browser `getUserMedia`/`MediaRecorder` capture and a
+server-mediated Whisper-compatible transcription adapter. The backend alone holds
+provider credentials. Browser-only speech recognition is not authoritative or the
+primary path. The browser negotiates a supported recording format rather than
+assuming one codec across devices.
 
 Both return final text into the same server-side assessment use case as typing.
 The client cannot make assessment authoritative by claiming a transcript or
@@ -249,11 +246,13 @@ not learning states. Interim results may be displayed but never credited.
 | Authentication expires during transcription      | Do not commit against stale auth; re-authenticate and reconcile before resubmission |
 | Assessment persistence fails or response is lost | Report unsaved/unknown outcome accurately; reconcile idempotently                   |
 
-Validate audio payloads and provider responses as unknown inputs. Bounds,
-timeouts, rate/cost controls, consent, retention, and transcript correction need
-D-06/D-13 decisions. Do not retain raw recordings by default or silently switch
-providers. Retry must not trigger an unrequested new capture/upload. Record only
-sanitized operational errors; not raw audio or full transcripts.
+Validate audio payloads and provider responses as unknown inputs. Uploads are
+limited to allowlisted browser audio types, 5 MB, and 0.25–120 seconds. Provider
+calls time out after 20 seconds and provider-measured duration is validated. Raw
+recordings are held only in request memory and are not persisted by Mathaino.
+Transcript correction/retention and rate/cost controls remain open. Do not
+silently switch providers. Record only sanitized operational errors, not raw audio
+or full transcripts.
 
 ## 8. Security and ownership boundaries
 
