@@ -136,10 +136,12 @@ export function RecitationFeedback({
   result,
   headingRef,
   onRetry,
+  substitutionVerb = "typed",
 }: {
   result: RecitationResult;
   headingRef?: RefObject<HTMLHeadingElement | null>;
   onRetry: () => void;
+  substitutionVerb?: "typed" | "heard";
 }) {
   return (
     <section className="recitation-result" aria-label="Recitation result">
@@ -155,7 +157,7 @@ export function RecitationFeedback({
             <li
               key={`${difference.type}-${difference.expectedIndex}-${difference.submittedIndex}-${index}`}
             >
-              {differenceText(difference)}
+              {differenceText(difference, substitutionVerb)}
             </li>
           ))}
         </ul>
@@ -202,10 +204,13 @@ function createOperationId() {
   return crypto.randomUUID();
 }
 
-function differenceText(difference: WordDifference) {
+function differenceText(
+  difference: WordDifference,
+  substitutionVerb: "typed" | "heard",
+) {
   if (difference.type === "omission") return `Missing “${difference.expected}”`;
   if (difference.type === "insertion") return `Extra “${difference.submitted}”`;
-  return `Expected “${difference.expected}”; typed “${difference.submitted}”`;
+  return `Expected “${difference.expected}”; ${substitutionVerb} “${difference.submitted}”`;
 }
 
 export function errorMessage(value: unknown) {

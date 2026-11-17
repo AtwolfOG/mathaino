@@ -55,6 +55,7 @@ See [database schema and operations](docs/database.md),
 [authentication setup and security boundaries](docs/authentication.md),
 [KJV source observations and import results](docs/kjv-source.md),
 [development and test isolation](docs/development.md),
+[transcription architecture](docs/transcription-architecture.md),
 [requirements](docs/requirements.md), [architecture](docs/architecture.md), and
 [initial verification results](docs/setup-verification.md). Follow [AGENTS.md](AGENTS.md)
 and RED -> GREEN -> REFACTOR for every new behaviour.

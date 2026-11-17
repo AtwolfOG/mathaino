@@ -5,11 +5,16 @@ import { useState } from "react";
 import type { LearningQueueView } from "../../application/learning-queue.ts";
 import { RecitationPractice } from "./recitation-practice.tsx";
 import { VerseReveal } from "./typed-recitation.tsx";
+import type { VoiceProviderSet } from "./voice-recitation.tsx";
 
 export function TodayPractice({
   initialQueue,
+  localWhisperEnabled = false,
+  createVoiceProviders,
 }: {
   initialQueue: LearningQueueView;
+  localWhisperEnabled?: boolean;
+  createVoiceProviders?: () => VoiceProviderSet;
 }) {
   const [queue, setQueue] = useState(initialQueue);
   const [pending, setPending] = useState(false);
@@ -84,6 +89,8 @@ export function TodayPractice({
             itemId={item.id}
             reference={`${item.bookName} ${item.chapter}:${item.verse}`}
             verseText={item.text}
+            localWhisperEnabled={localWhisperEnabled}
+            createVoiceProviders={createVoiceProviders}
           />
         ) : (
           <>

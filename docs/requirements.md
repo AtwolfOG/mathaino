@@ -136,10 +136,12 @@ As a learner, I can speak a verse and receive an assessment.
   provider/network error, and expired authentication have distinct recovery paths.
 - Typing remains available when voice is unavailable; no automatic re-recording
   or background upload occurs after cancellation.
-- Voice uses explicit browser recording and server-mediated, Whisper-compatible
-  transcription. English/KJV recitation is the initial language scope. Recordings
-  are limited to 5 MB and 0.25–120 seconds and are not retained by Mathaino.
-  Transcript editing and longer-term transcript retention remain D-06.
+- Voice uses local-first browser transcription. Moonshine Base is preferred,
+  Moonshine Tiny is the low-resource alternative, and supported on-device Web
+  Speech is the offline fallback. Ordinary Web Speech requires explicit consent.
+  English/KJV recitation is the initial language scope. Recordings are limited to
+  5 MB and 0.25–120 seconds and are not retained by Mathaino. Browser transcripts
+  remain untrusted input; assessment and progress are authoritative server work.
 
 ### Approved recitation evaluation policy
 
@@ -309,21 +311,21 @@ Resolve a decision in this document with concrete examples before writing its
 failing behaviour tests. Architecture should remain adaptable without building
 multiple speculative implementations.
 
-| ID   | Decision to resolve                                                                                                                                                                                        | Affected scope                |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| D-01 | KJV Protestant-66, public reading, canonical previous/next chapter navigation, and verbatim inline annotations approved; search and future collection scope remain open                                    | US-01                         |
-| D-02 | Better Auth email/password and native opaque sessions approved; fixed seven-day sessions configured; verification/recovery delivery, account lifecycle and retention/export remain open                    | US-02, security               |
-| D-03 | Archive/delete removal, account default plus per-action override, restore, and delete-then-readd semantics approved; passage learning, pause, and restart without deletion remain open                     | US-03, state model            |
-| D-04 | Active learning before due reviews, deterministic persisted order, no daily limit, and persisted cursor approved; post-attempt eligibility remains with D-08                                               | US-04                         |
-| D-05 | Deterministic word alignment and scoring approved as documented above; case, harmless punctuation, whitespace, paragraph markers, source wording/notes, references, and hints have explicit treatment      | US-05/06, mastery             |
-| D-06 | Browser recording with server-mediated Whisper-compatible transcription approved; provider credentials remain server-side and raw recordings are not retained; transcript correction/retention remain open | US-06, privacy                |
-| D-07 | Per-user threshold defaults to 3, range 1–30; changes apply on next success without revoking mastery                                                                                                       | US-07                         |
-| D-08 | Success seals verse-day credit; failures remain attempts but do not erase credit; request retries are idempotent                                                                                           | US-05/06/07                   |
-| D-09 | Any persisted typed assessment qualifies a practice day; review qualification and streak display details remain open                                                                                       | US-08                         |
-| D-10 | First review is one local calendar day after mastery; later intervals, anchors, early/overdue/repeated reviews, failure/demotion and policy changes remain open                                            | US-09                         |
-| D-11 | Accessibility target, browser/device matrix, PWA installation details, offline reader scope and offline writes/sync                                                                                        | US-10                         |
-| D-12 | Account IANA zone/default UTC and server acceptance boundary approved for typed practice; travel and offline/backdated behavior remain open                                                                | All daily behaviour           |
-| D-13 | Typed input is limited to 10,000 Unicode code points/1,000 normalised words; voice is limited to supported MIME types, 5 MB, 0.25–120 seconds, and a 20-second provider timeout                            | Validation, voice, operations |
+| ID   | Decision to resolve                                                                                                                                                                                   | Affected scope                |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| D-01 | KJV Protestant-66, public reading, canonical previous/next chapter navigation, and verbatim inline annotations approved; search and future collection scope remain open                               | US-01                         |
+| D-02 | Better Auth email/password and native opaque sessions approved; fixed seven-day sessions configured; verification/recovery delivery, account lifecycle and retention/export remain open               | US-02, security               |
+| D-03 | Archive/delete removal, account default plus per-action override, restore, and delete-then-readd semantics approved; passage learning, pause, and restart without deletion remain open                | US-03, state model            |
+| D-04 | Active learning before due reviews, deterministic persisted order, no daily limit, and persisted cursor approved; post-attempt eligibility remains with D-08                                          | US-04                         |
+| D-05 | Deterministic word alignment and scoring approved as documented above; case, harmless punctuation, whitespace, paragraph markers, source wording/notes, references, and hints have explicit treatment | US-05/06, mastery             |
+| D-06 | Local-first browser transcription approved; ordinary Web Speech is opt-in, local Mac Whisper is development-only, raw recordings are not retained, and transcript correction/retention remain open    | US-06, privacy                |
+| D-07 | Per-user threshold defaults to 3, range 1–30; changes apply on next success without revoking mastery                                                                                                  | US-07                         |
+| D-08 | Success seals verse-day credit; failures remain attempts but do not erase credit; request retries are idempotent                                                                                      | US-05/06/07                   |
+| D-09 | Any persisted typed assessment qualifies a practice day; review qualification and streak display details remain open                                                                                  | US-08                         |
+| D-10 | First review is one local calendar day after mastery; later intervals, anchors, early/overdue/repeated reviews, failure/demotion and policy changes remain open                                       | US-09                         |
+| D-11 | Accessibility target, browser/device matrix, PWA installation details, offline reader scope and offline writes/sync                                                                                   | US-10                         |
+| D-12 | Account IANA zone/default UTC and server acceptance boundary approved for typed practice; travel and offline/backdated behavior remain open                                                           | All daily behaviour           |
+| D-13 | Typed input is limited to 10,000 Unicode code points/1,000 normalised words; voice is limited to supported MIME types, 5 MB, 0.25–120 seconds, and a 20-second provider timeout                       | Validation, voice, operations |
 
 ## 9. Non-goals and deferred features
 

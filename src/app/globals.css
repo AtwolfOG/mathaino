@@ -310,6 +310,37 @@ button {
   color: #9a2f26;
   font-weight: 650;
 }
+.speech-mode-field {
+  display: grid;
+  gap: 0.4rem;
+  max-width: 22rem;
+}
+.speech-mode-field label {
+  font-weight: 650;
+}
+.speech-mode-field select {
+  min-height: 2.75rem;
+  border: 1px solid #758b9c;
+  border-radius: 0.35rem;
+  padding-inline: 0.75rem;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+}
+.online-speech-consent,
+.voice-status {
+  max-width: 38rem;
+}
+.online-speech-consent > button {
+  min-height: 2.75rem;
+  border: 1px solid var(--teal);
+  border-radius: 0.35rem;
+  padding-inline: 1.1rem;
+  background: white;
+  color: var(--teal-dark);
+  font-weight: 650;
+  cursor: pointer;
+}
 .verse-reveal {
   padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--rule);

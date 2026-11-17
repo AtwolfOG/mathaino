@@ -222,16 +222,16 @@ Future translations can use the application import ports with their own adapters
 ## 7. Transcription architecture and failure handling
 
 Voice recitation uses browser `getUserMedia`/`MediaRecorder` capture and a
-server-mediated Whisper-compatible transcription adapter. The backend alone holds
-provider credentials. Browser-only speech recognition is not authoritative or the
-primary path. The browser negotiates a supported recording format rather than
-assuming one codec across devices.
+client-side provider manager. Moonshine Base/Tiny run in a module worker through
+Transformers.js. Native on-device and consented online Web Speech own live capture.
+An optional development route proxies validated WAV only to a fixed loopback
+whisper.cpp server. The browser negotiates a supported recording format rather
+than assuming one codec across devices.
 
-Both return final text into the same server-side assessment use case as typing.
-The client cannot make assessment authoritative by claiming a transcript or
-confidence score proves success. Verifying that a learner genuinely memorised
-text is outside the ownership/security boundary; private progress is not an
-anti-cheat credential.
+All providers return final text into the same server-side assessment use case as
+typing. Browser transcripts are untrusted learner input. The client cannot make
+assessment authoritative by claiming a transcript or confidence score proves
+success; the server resolves the owned verse, grades it, and commits progress.
 
 Conceptual capture/transcription states are idle, requesting permission,
 capturing, transcribing, ready, cancelled, and error. These are interaction states,
@@ -246,13 +246,12 @@ not learning states. Interim results may be displayed but never credited.
 | Authentication expires during transcription      | Do not commit against stale auth; re-authenticate and reconcile before resubmission |
 | Assessment persistence fails or response is lost | Report unsaved/unknown outcome accurately; reconcile idempotently                   |
 
-Validate audio payloads and provider responses as unknown inputs. Uploads are
-limited to allowlisted browser audio types, 5 MB, and 0.25–120 seconds. Provider
-calls time out after 20 seconds and provider-measured duration is validated. Raw
-recordings are held only in request memory and are not persisted by Mathaino.
-Transcript correction/retention and rate/cost controls remain open. Do not
-silently switch providers. Record only sanitized operational errors, not raw audio
-or full transcripts.
+Validate audio, worker messages, browser-service results, and submitted transcripts
+as unknown inputs. Recordings are limited to allowlisted browser audio types, 5 MB,
+and 0.25–120 seconds. Inference calls time out after 20 seconds. Raw recordings are
+not persisted by Mathaino. Moonshine audio never reaches an application audio
+endpoint. Do not silently activate online recognition. Record only sanitized
+operational errors, not raw audio or full transcripts.
 
 ## 8. Security and ownership boundaries
 

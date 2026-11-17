@@ -1,43 +1,35 @@
 # Voice recitation
 
-Voice recitation captures audio only after the learner selects **Start recording**.
-The browser uploads the completed recording to Mathaino over the current origin.
-The server authenticates the request, validates the multipart upload, sends the
-audio to the configured Whisper-compatible provider, and grades the final
-transcript with the same evaluator used by typed recitation.
+Voice recitation is local-first. The default browser path records audio after an
+explicit learner action and transcribes it in a Web Worker with Moonshine. Only the
+final transcript is sent to Mathaino for the same assessment and persistence used
+by typed recitation.
 
-Raw recordings are not written to Mathaino storage. Provider-side handling is
-governed by the selected provider's account and retention settings. Do not enable
-voice recitation until those settings satisfy the deployment's privacy policy.
+Moonshine model weights require an initial download. A model is described as ready
+only after initialization succeeds. Transformers.js uses supported browser caches,
+but cache persistence and available storage remain browser-controlled.
 
-## Configuration
+Ordinary Web Speech may send audio to a browser-vendor service and is disabled
+until the learner explicitly consents. Native Web Speech is considered on-device
+only when the browser reports local English dictation support. Raw recordings and
+transcripts are not stored as separate Mathaino database records.
 
-Set these only in the server environment:
-
-```text
-TRANSCRIPTION_API_URL=https://api.openai.com/v1/audio/transcriptions
-TRANSCRIPTION_API_KEY=...
-TRANSCRIPTION_MODEL=whisper-1
-```
-
-Production must use HTTPS. `getUserMedia` is available only in secure contexts
-(with loopback exceptions for local development), and `BETTER_AUTH_URL` already
-rejects non-HTTPS production origins.
+See [transcription-architecture.md](transcription-architecture.md) for provider,
+privacy, development, troubleshooting, and testing details.
 
 ## Manual browser verification
 
-Use a non-production test account and a short test verse. For each target below,
-test both permission grant and denial, confirm the transcript appears before or
-alongside grading, and verify **Type instead** remains available after every error.
+Use a non-production account and short verse. Check permission grant and denial,
+model download status, transcript display, retry, cancellation, microphone release,
+and the always-available typed path.
 
-| Target            | Manual checks                                                                                                                        |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Safari on macOS   | Record and stop an MP4/AAC browser recording; retry after denial; confirm the microphone indicator clears after stop and navigation. |
-| Chrome desktop    | Record WebM/Opus; stop normally; disconnect the network during upload; retry; confirm typed fallback and no false success.           |
-| Firefox desktop   | Record Ogg/Opus or the format Firefox selects; deny permission; test silence and provider-error recovery.                            |
-| Chrome on Android | Test the built-in microphone, a 120-second automatic stop, rotation/reflow, network loss, and switching to typing.                   |
-| Safari on iOS     | Test on a real device over HTTPS, grant and deny permission, stop recording, background/return behavior, and typed fallback.         |
+| Target            | Required checks                                                                |
+| ----------------- | ------------------------------------------------------------------------------ |
+| Chrome desktop    | WebGPU and WASM paths, model cache reuse, WebM/Opus, offline-after-cache check |
+| Firefox desktop   | WASM practicality, Ogg/Opus, unsupported Web Speech handling                   |
+| Safari on macOS   | MP4/AAC decoding, worker/model support, microphone release                     |
+| Chrome on Android | Tiny selection on low-memory devices, duration limit, rotation and reflow      |
+| Safari on iOS     | Real-device HTTPS capture, background/return, storage pressure, typed fallback |
 
-Also verify an unsupported browser/format shows a useful message, an expired
-session receives an authentication error, oversized/overlong recordings are
-rejected, and no raw audio appears in application logs or database records.
+These targets are a verification checklist, not a compatibility claim. Record the
+actual browser versions and hardware used before claiming support.

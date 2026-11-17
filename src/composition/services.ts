@@ -9,9 +9,8 @@ import { createLearningQueue } from "../infrastructure/database/learning-queue.t
 import { createRecitationAttemptStore } from "../infrastructure/database/recitation.ts";
 import { createRecitationService } from "../application/recitation.ts";
 import { createPracticeSettings } from "../infrastructure/database/practice-settings.ts";
-import { readTranscriptionEnvironment } from "../infrastructure/config/transcription-environment.ts";
-import { createWhisperTranscriptionProvider } from "../infrastructure/transcription/whisper.ts";
-import { createVoiceRecitationService } from "../application/voice-recitation.ts";
+import { readLocalWhisperEnvironment } from "../infrastructure/config/local-whisper-environment.ts";
+import { createLocalWhisperTranscriber } from "../infrastructure/transcription/local-whisper-server.ts";
 
 async function createServices() {
   const config = readAuthEnvironment(process.env);
@@ -60,13 +59,14 @@ export function getServices() {
   return services;
 }
 
-export async function getVoiceServices() {
+export async function getLocalWhisperServices() {
+  const config = readLocalWhisperEnvironment(process.env);
+  if (!config.enabled) return { enabled: false as const };
   const base = await getServices();
-  const provider = createWhisperTranscriptionProvider(
-    readTranscriptionEnvironment(process.env),
-  );
   return {
-    ...base,
-    voiceRecitation: createVoiceRecitationService(provider, base.recitation),
+    enabled: true as const,
+    auth: base.auth,
+    authOrigin: base.authOrigin,
+    transcriber: createLocalWhisperTranscriber(config),
   };
 }

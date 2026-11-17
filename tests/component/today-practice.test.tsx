@@ -1,7 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
 import type { LearningQueueView } from "@/application/learning-queue";
+import {
+  TranscriptionProviderError,
+  type TranscriptionProvider,
+} from "@/application/transcription";
 import { TodayPractice } from "@/ui/learning/today-practice";
+import type { VoiceProviderSet } from "@/ui/learning/voice-recitation";
 
 const firstId = "20000000-0000-4000-8000-000000000001";
 const secondId = "20000000-0000-4000-8000-000000000002";
@@ -24,13 +29,71 @@ const queue: LearningQueueView = {
   nextId: secondId,
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  localStorage.clear();
+  vi.unstubAllGlobals();
+});
 
 function setMediaDevices(value: MediaDevices | undefined) {
   Object.defineProperty(navigator, "mediaDevices", {
     configurable: true,
     value,
   });
+}
+
+function fakeProvider(
+  id: string,
+  options: Partial<TranscriptionProvider> = {},
+): TranscriptionProvider {
+  return {
+    id,
+    label:
+      id === "moonshine-base"
+        ? "Moonshine Base"
+        : id === "moonshine-tiny"
+          ? "Moonshine Tiny"
+          : id,
+    requiresOnlineConsent: id === "online-web-speech",
+    getCapability: vi.fn().mockResolvedValue({ supported: true }),
+    initialize: vi.fn(async (onUpdate) => {
+      onUpdate({ status: "ready" });
+    }),
+    transcribe: vi.fn().mockResolvedValue({
+      text: "For God so loved the world",
+      provider: { id, label: id },
+    }),
+    cleanup: vi.fn().mockResolvedValue(undefined),
+    ...options,
+  };
+}
+
+function fakeVoiceProviders(options?: {
+  base?: TranscriptionProvider;
+  tiny?: TranscriptionProvider;
+  online?: TranscriptionProvider;
+  nativeAvailability?: "available" | "downloadable" | "unavailable";
+  local?: TranscriptionProvider;
+}): VoiceProviderSet {
+  const native = Object.assign(fakeProvider("native-web-speech"), {
+    stop: vi.fn(),
+    getEnglishAvailability: vi
+      .fn()
+      .mockResolvedValue(options?.nativeAvailability ?? "unavailable"),
+    installEnglishLanguagePack: vi.fn().mockResolvedValue(true),
+  });
+  return {
+    native,
+    providers: [
+      options?.base ?? fakeProvider("moonshine-base"),
+      options?.tiny ?? fakeProvider("moonshine-tiny"),
+      native,
+      options?.online ??
+        fakeProvider("online-web-speech", {
+          getCapability: vi.fn().mockResolvedValue({ supported: false }),
+        }),
+      ...(options?.local ? [options.local] : []),
+    ],
+  };
 }
 
 test("Today presents one verse with status and queue progress", () => {
@@ -165,17 +228,72 @@ test("an intentional retry clears feedback and focuses a fresh recitation", asyn
   expect(screen.queryByText("0% accuracy")).not.toBeInTheDocument();
 });
 
-test("keeps typed recitation available when browser recording is unsupported", () => {
+test("keeps typed recitation available when browser recording is unsupported", async () => {
   setMediaDevices(undefined);
   vi.stubGlobal("MediaRecorder", undefined);
   render(<TodayPractice initialQueue={queue} />);
 
   fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
-  expect(screen.getByRole("alert")).toHaveTextContent(
+  expect(await screen.findByRole("alert")).toHaveTextContent(
     "Voice recording is not supported by this browser.",
   );
   fireEvent.click(screen.getByRole("button", { name: "Type instead" }));
   expect(screen.getByLabelText("Type John 3:16")).toBeVisible();
+});
+
+test("offers an accessible provider selector and safely restores a versioned preference", () => {
+  setMediaDevices({ getUserMedia: vi.fn() } as unknown as MediaDevices);
+  class Recorder {
+    static isTypeSupported() {
+      return true;
+    }
+  }
+  vi.stubGlobal("MediaRecorder", Recorder);
+  localStorage.setItem(
+    "mathaino:speech-recognition-mode:v1",
+    JSON.stringify({ version: 1, mode: "moonshine-tiny" }),
+  );
+  const providers = fakeVoiceProviders();
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+
+  expect(screen.getByLabelText("Speech recognition mode")).toHaveValue(
+    "moonshine-tiny",
+  );
+  expect(screen.getByRole("option", { name: "Automatic" })).toBeInTheDocument();
+  expect(
+    screen.getByRole("option", { name: "Moonshine Base" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("option", { name: "Moonshine Tiny" }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Type instead" })).toBeVisible();
+});
+
+test("falls back to Automatic when a stored mode is unavailable", async () => {
+  localStorage.setItem(
+    "mathaino:speech-recognition-mode:v1",
+    JSON.stringify({ version: 1, mode: "local-whisper" }),
+  );
+  render(<TodayPractice initialQueue={queue} />);
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+
+  await waitFor(() =>
+    expect(screen.getByLabelText("Speech recognition mode")).toHaveValue(
+      "automatic",
+    ),
+  );
+  expect(
+    JSON.parse(
+      localStorage.getItem("mathaino:speech-recognition-mode:v1") ?? "{}",
+    ),
+  ).toEqual({ version: 1, mode: "automatic" });
 });
 
 test("explains microphone denial and allows a typed fallback", async () => {
@@ -190,7 +308,13 @@ test("explains microphone denial and allows a typed fallback", async () => {
     }
   }
   vi.stubGlobal("MediaRecorder", Recorder);
-  render(<TodayPractice initialQueue={queue} />);
+  const providers = fakeVoiceProviders();
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
   fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
@@ -200,6 +324,49 @@ test("explains microphone denial and allows a typed fallback", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Type instead" }));
   expect(screen.getByLabelText("Type John 3:16")).toBeVisible();
 });
+
+test.each(["constructor", "start"] as const)(
+  "releases the microphone when recorder %s fails",
+  async (failurePoint) => {
+    const stopTrack = vi.fn();
+    setMediaDevices({
+      getUserMedia: vi.fn().mockResolvedValue({
+        getTracks: () => [{ stop: stopTrack }],
+      }),
+    } as unknown as MediaDevices);
+    class Recorder {
+      static isTypeSupported() {
+        return true;
+      }
+      state = "inactive";
+      ondataavailable = null;
+      onstop = null;
+      onerror = null;
+      constructor() {
+        if (failurePoint === "constructor") throw new Error("Recorder failed.");
+      }
+      start() {
+        if (failurePoint === "start") throw new Error("Recorder failed.");
+      }
+      stop() {}
+    }
+    vi.stubGlobal("MediaRecorder", Recorder);
+    render(
+      <TodayPractice
+        initialQueue={queue}
+        createVoiceProviders={() => fakeVoiceProviders()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Recorder failed.",
+    );
+    expect(stopTrack).toHaveBeenCalledOnce();
+  },
+);
 
 test("records a supported browser format and shows the transcript with grading", async () => {
   const stopTrack = vi.fn();
@@ -254,7 +421,13 @@ test("records a supported browser format and shows the transcript with grading",
     ),
   );
   vi.stubGlobal("fetch", fetch);
-  render(<TodayPractice initialQueue={queue} />);
+  const providers = fakeVoiceProviders();
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
   fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
@@ -268,9 +441,521 @@ test("records a supported browser format and shows the transcript with grading",
   const [url, options] = fetch.mock.calls[0]!;
   expect(url).toBe("/api/voice-recitation-attempts");
   expect(options.method).toBe("POST");
-  const body = options.body as FormData;
-  expect(body.get("durationSeconds")).toBe("1");
-  expect((body.get("audio") as File).type).toBe("audio/ogg;codecs=opus");
+  expect(options.headers).toEqual({ "content-type": "application/json" });
+  expect(JSON.parse(String(options.body))).toEqual({
+    itemId: firstId,
+    operationId: expect.stringMatching(/^[0-9a-f-]{36}$/),
+    text: "For God so loved the world",
+  });
+  expect(fetch).not.toHaveBeenCalledWith(
+    "/api/local-whisper-transcriptions",
+    expect.anything(),
+  );
+});
+
+test("automatic mode falls back from Base initialization to Tiny", async () => {
+  setMediaDevices({
+    getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [] }),
+  } as unknown as MediaDevices);
+  class Recorder {
+    static isTypeSupported() {
+      return true;
+    }
+    state = "inactive";
+    ondataavailable = null;
+    onstop = null;
+    onerror = null;
+    start() {
+      this.state = "recording";
+    }
+    stop() {
+      this.state = "inactive";
+    }
+  }
+  vi.stubGlobal("MediaRecorder", Recorder);
+  const failure = new TranscriptionProviderError({
+    code: "model-failed",
+    message: "Base model failed.",
+    recoverable: true,
+    providerId: "moonshine-base",
+  });
+  const base = fakeProvider("moonshine-base", {
+    initialize: vi.fn().mockRejectedValue(failure),
+  });
+  const tiny = fakeProvider("moonshine-tiny");
+  const providers = fakeVoiceProviders({ base, tiny });
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+
+  await screen.findByRole("button", { name: "Stop recording" });
+  expect(base.initialize).toHaveBeenCalledOnce();
+  expect(base.cleanup).toHaveBeenCalledOnce();
+  expect(tiny.initialize).toHaveBeenCalledOnce();
+  expect(screen.getByText("Active provider: Moonshine Tiny")).toBeVisible();
+});
+
+test("a manual provider failure does not silently switch providers", async () => {
+  setMediaDevices({ getUserMedia: vi.fn() } as unknown as MediaDevices);
+  class Recorder {
+    static isTypeSupported() {
+      return true;
+    }
+  }
+  vi.stubGlobal("MediaRecorder", Recorder);
+  const base = fakeProvider("moonshine-base", {
+    initialize: vi.fn().mockRejectedValue(new Error("Base unavailable.")),
+  });
+  const tiny = fakeProvider("moonshine-tiny");
+  const providers = fakeVoiceProviders({ base, tiny });
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  fireEvent.change(screen.getByLabelText("Speech recognition mode"), {
+    target: { value: "moonshine-base" },
+  });
+  await waitFor(() =>
+    expect(screen.getByLabelText("Speech recognition mode")).toHaveValue(
+      "moonshine-base",
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Base unavailable.",
+  );
+  expect(base.initialize).toHaveBeenCalledOnce();
+  expect(tiny.initialize).not.toHaveBeenCalled();
+});
+
+test("online browser speech initializes only after explicit per-selection consent", async () => {
+  const online = fakeProvider("online-web-speech");
+  const providers = fakeVoiceProviders({ online });
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  const select = await screen.findByLabelText("Speech recognition mode");
+  await waitFor(() =>
+    expect(
+      screen.getByRole("option", { name: "Online browser speech" }),
+    ).toBeInTheDocument(),
+  );
+  fireEvent.change(select, { target: { value: "online-web-speech" } });
+
+  await waitFor(() => expect(select).toHaveValue("online-web-speech"));
+
+  expect(screen.getByText(/browser vendor for processing/i)).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Start recording" }),
+  ).toBeDisabled();
+  expect(online.initialize).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Allow online recognition" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+  await waitFor(() => expect(online.initialize).toHaveBeenCalledOnce());
+});
+
+test("switching to typing aborts transcript submission and ignores its response", async () => {
+  const online = fakeProvider("online-web-speech");
+  const providers = fakeVoiceProviders({ online });
+  let submissionSignal: AbortSignal | undefined;
+  const fetch = vi.fn(
+    (_url: string, options?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        submissionSignal = options?.signal as AbortSignal;
+        submissionSignal.addEventListener(
+          "abort",
+          () => reject(new DOMException("Aborted", "AbortError")),
+          { once: true },
+        );
+      }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("option", { name: "Online browser speech" }),
+    ).toBeInTheDocument(),
+  );
+  fireEvent.change(screen.getByLabelText("Speech recognition mode"), {
+    target: { value: "online-web-speech" },
+  });
+  await waitFor(() =>
+    expect(screen.getByLabelText("Speech recognition mode")).toHaveValue(
+      "online-web-speech",
+    ),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Allow online recognition" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+  await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+
+  fireEvent.click(screen.getByRole("button", { name: "Type instead" }));
+
+  await waitFor(() => expect(submissionSignal?.aborted).toBe(true));
+  expect(screen.getByLabelText("Type John 3:16")).toBeVisible();
+  expect(screen.queryByText("Transcript")).not.toBeInTheDocument();
+});
+
+test("retries an uncertain voice save with the same transcript and operation id", async () => {
+  const online = fakeProvider("online-web-speech");
+  const providers = fakeVoiceProviders({ online });
+  const saved = {
+    status: "recorded" as const,
+    evaluation: {
+      normalizedExpected: "for god so loved the world",
+      normalizedSubmitted: "for god so loved the world",
+      differences: [],
+      accuracy: 100,
+      passed: true,
+      feedback: "Perfect match: no word differences.",
+    },
+    progress: {
+      consecutiveDays: 1,
+      masteryThreshold: 3,
+      mastered: false,
+      practiceStreak: 1,
+    },
+  };
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockRejectedValueOnce(new TypeError("response lost"))
+    .mockResolvedValueOnce(Response.json(saved, { status: 201 }));
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("option", { name: "Online browser speech" }),
+    ).toBeInTheDocument(),
+  );
+  fireEvent.change(screen.getByLabelText("Speech recognition mode"), {
+    target: { value: "online-web-speech" },
+  });
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Allow online recognition" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+
+  const retrySave = await screen.findByRole("button", {
+    name: "Try saving again",
+  });
+  const firstBody = JSON.parse(
+    String((fetch.mock.calls[0]?.[1] as RequestInit).body),
+  );
+  fireEvent.click(retrySave);
+
+  await screen.findByText("100% accuracy");
+  const secondBody = JSON.parse(
+    String((fetch.mock.calls[1]?.[1] as RequestInit).body),
+  );
+  expect(secondBody).toEqual(firstBody);
+  expect(secondBody.text).toBe("For God so loved the world");
+  expect(online.transcribe).toHaveBeenCalledOnce();
+});
+
+test("keeps an uncertain transcript retryable after a confirmed HTTP failure", async () => {
+  const online = fakeProvider("online-web-speech");
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockRejectedValueOnce(new TypeError("response lost"))
+    .mockResolvedValueOnce(
+      Response.json(
+        { error: "Saving is temporarily unavailable." },
+        { status: 500 },
+      ),
+    )
+    .mockResolvedValueOnce(
+      Response.json(
+        {
+          status: "recorded",
+          evaluation: {
+            normalizedExpected: "for god so loved the world",
+            normalizedSubmitted: "for god so loved the world",
+            differences: [],
+            accuracy: 100,
+            passed: true,
+            feedback: "Perfect match: no word differences.",
+          },
+          progress: {
+            consecutiveDays: 1,
+            masteryThreshold: 3,
+            mastered: false,
+            practiceStreak: 1,
+          },
+        },
+        { status: 201 },
+      ),
+    );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => fakeVoiceProviders({ online })}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("option", { name: "Online browser speech" }),
+    ).toBeInTheDocument(),
+  );
+  fireEvent.change(screen.getByLabelText("Speech recognition mode"), {
+    target: { value: "online-web-speech" },
+  });
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Allow online recognition" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Try saving again" }),
+  );
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Saving is temporarily unavailable.",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Try saving again" }));
+
+  await screen.findByText("100% accuracy");
+  expect(fetch).toHaveBeenCalledTimes(3);
+  expect(online.transcribe).toHaveBeenCalledOnce();
+});
+
+test("native downloadable speech exposes an explicit language pack install action", async () => {
+  const providers = fakeVoiceProviders({ nativeAvailability: "downloadable" });
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("option", { name: "On-device browser speech" }),
+    ).toBeInTheDocument(),
+  );
+  fireEvent.change(screen.getByLabelText("Speech recognition mode"), {
+    target: { value: "native-web-speech" },
+  });
+  await waitFor(() =>
+    expect(screen.getByLabelText("Speech recognition mode")).toHaveValue(
+      "native-web-speech",
+    ),
+  );
+  expect(
+    screen.getByRole("button", {
+      name: "Install on-device English language pack",
+    }),
+  ).toBeVisible();
+  expect(providers.native.installEnglishLanguagePack).not.toHaveBeenCalled();
+});
+
+test("native downloading speech can be checked again explicitly", async () => {
+  const providers = fakeVoiceProviders();
+  vi.mocked(providers.native.getEnglishAvailability)
+    .mockResolvedValueOnce("downloading")
+    .mockResolvedValueOnce("available");
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("option", { name: "On-device browser speech" }),
+    ).toBeInTheDocument(),
+  );
+  fireEvent.change(screen.getByLabelText("Speech recognition mode"), {
+    target: { value: "native-web-speech" },
+  });
+
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "Check on-device English language pack",
+    }),
+  );
+
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Start recording" }),
+    ).toBeEnabled(),
+  );
+  expect(providers.native.installEnglishLanguagePack).not.toHaveBeenCalled();
+});
+
+test("mode switching cancels provider initialization and ignores its stale completion", async () => {
+  setMediaDevices({ getUserMedia: vi.fn() } as unknown as MediaDevices);
+  class Recorder {
+    static isTypeSupported() {
+      return true;
+    }
+  }
+  vi.stubGlobal("MediaRecorder", Recorder);
+  let rejectInitialization: ((error: unknown) => void) | undefined;
+  const cancelled = new TranscriptionProviderError({
+    code: "cancelled",
+    message: "Cancelled.",
+    recoverable: true,
+    providerId: "moonshine-base",
+  });
+  const base = fakeProvider("moonshine-base", {
+    initialize: vi.fn(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectInitialization = reject;
+        }),
+    ),
+    cleanup: vi.fn(async () => rejectInitialization?.(cancelled)),
+  });
+  const providers = fakeVoiceProviders({ base });
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  fireEvent.change(screen.getByLabelText("Speech recognition mode"), {
+    target: { value: "moonshine-base" },
+  });
+  await waitFor(() =>
+    expect(screen.getByLabelText("Speech recognition mode")).toHaveValue(
+      "moonshine-base",
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+  await screen.findByText("Preparing speech recognition.");
+  fireEvent.change(screen.getByLabelText("Speech recognition mode"), {
+    target: { value: "moonshine-tiny" },
+  });
+
+  await waitFor(() => expect(base.cleanup).toHaveBeenCalledOnce());
+  expect(screen.getByLabelText("Speech recognition mode")).toHaveValue(
+    "moonshine-tiny",
+  );
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+test("announces model download progress without claiming readiness", async () => {
+  setMediaDevices({ getUserMedia: vi.fn() } as unknown as MediaDevices);
+  class Recorder {
+    static isTypeSupported() {
+      return true;
+    }
+  }
+  vi.stubGlobal("MediaRecorder", Recorder);
+  const base = fakeProvider("moonshine-base", {
+    initialize: vi.fn(
+      (onUpdate) =>
+        new Promise<void>(() => {
+          onUpdate({
+            status: "progress",
+            progress: 0.4,
+            message: "Downloading model.",
+          });
+        }),
+    ),
+  });
+  const providers = fakeVoiceProviders({ base });
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  fireEvent.change(screen.getByLabelText("Speech recognition mode"), {
+    target: { value: "moonshine-base" },
+  });
+  await waitFor(() =>
+    expect(screen.getByLabelText("Speech recognition mode")).toHaveValue(
+      "moonshine-base",
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+
+  expect(await screen.findByText("Downloading model.")).toBeVisible();
+  expect(screen.getByText("Active provider: Moonshine Base")).toBeVisible();
+  expect(screen.getByLabelText("Model download progress")).toHaveValue(0.4);
+  expect(screen.queryByText(/model ready/i)).not.toBeInTheDocument();
+});
+
+test("shows Local Whisper only when development mode and its provider are enabled", () => {
+  setMediaDevices({ getUserMedia: vi.fn() } as unknown as MediaDevices);
+  class Recorder {
+    static isTypeSupported() {
+      return true;
+    }
+  }
+  vi.stubGlobal("MediaRecorder", Recorder);
+  const providers = fakeVoiceProviders();
+  const view = render(
+    <TodayPractice
+      initialQueue={queue}
+      createVoiceProviders={() => providers}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  expect(
+    screen.queryByRole("option", { name: "Local Whisper (development)" }),
+  ).not.toBeInTheDocument();
+  view.unmount();
+
+  const enabledWithoutProvider = render(
+    <TodayPractice
+      initialQueue={queue}
+      localWhisperEnabled
+      createVoiceProviders={() => fakeVoiceProviders()}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  expect(
+    screen.queryByRole("option", { name: "Local Whisper (development)" }),
+  ).not.toBeInTheDocument();
+
+  enabledWithoutProvider.unmount();
+  render(
+    <TodayPractice
+      initialQueue={queue}
+      localWhisperEnabled
+      createVoiceProviders={() =>
+        fakeVoiceProviders({ local: fakeProvider("local-whisper") })
+      }
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Recite by voice" }));
+  expect(
+    screen.getByRole("option", { name: "Local Whisper (development)" }),
+  ).toBeInTheDocument();
 });
 
 test("due reviews explain why submission is unavailable", () => {

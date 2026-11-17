@@ -1,4 +1,4 @@
-import { getVoiceServices } from "@/composition/services";
+import { getServices } from "@/composition/services";
 import { createAuthenticationContext } from "@/infrastructure/authentication/context";
 import { handleVoiceRecitationRequest } from "@/ui/http/voice-recitation";
 
@@ -6,10 +6,10 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const services = await getVoiceServices();
+    const services = await getServices();
     return handleVoiceRecitationRequest(
       request,
-      services.voiceRecitation,
+      services.recitation,
       createAuthenticationContext(services.auth, request.headers),
       services.authOrigin,
     );

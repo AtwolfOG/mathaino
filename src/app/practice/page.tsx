@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getServices } from "@/composition/services";
 import { SignOutButton } from "@/ui/authentication/sign-out-button";
 import { TodayPractice } from "@/ui/learning/today-practice";
+import { readLocalWhisperEnvironment } from "@/infrastructure/config/local-whisper-environment";
 
 export const dynamic = "force-dynamic";
 export default async function PracticePage() {
@@ -32,7 +33,10 @@ export default async function PracticePage() {
         <h1>Today</h1>
         <p>Your learning verses and reviews due now.</p>
       </div>
-      <TodayPractice initialQueue={queue} />
+      <TodayPractice
+        initialQueue={queue}
+        localWhisperEnabled={readLocalWhisperEnvironment(process.env).enabled}
+      />
     </main>
   );
 }

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.18",
+    "@huggingface/transformers": "4.3.2",
     "@next/env": "16.4.5",
     "better-auth": "1.7.18",
     "drizzle-orm": "0.45.4",
@@ -58,7 +59,7 @@
     "db:migrate": "node --conditions=react-server scripts/migrate.mts",
     "db:seed": "node --conditions=react-server scripts/seed.mts",
     "bible:import": "node --conditions=react-server scripts/import-kjv.mts",
-    "format": "prettier --write src tests scripts \"*.{ts,mts,mjs,json,yaml}\" README.md \"docs/{development,setup-verification,database,kjv-source,authentication,architecture,requirements,voice-recitation}.md\"",
-    "format:check": "prettier --check src tests scripts \"*.{ts,mts,mjs,json,yaml}\" README.md \"docs/{development,setup-verification,database,kjv-source,authentication,architecture,requirements,voice-recitation}.md\""
+    "format": "prettier --write src tests scripts \"*.{ts,mts,mjs,json,yaml}\" README.md \"docs/{development,setup-verification,database,kjv-source,authentication,architecture,requirements,voice-recitation,transcription-architecture}.md\"",
+    "format:check": "prettier --check src tests scripts \"*.{ts,mts,mjs,json,yaml}\" README.md \"docs/{development,setup-verification,database,kjv-source,authentication,architecture,requirements,voice-recitation,transcription-architecture}.md\""
   }
 }
