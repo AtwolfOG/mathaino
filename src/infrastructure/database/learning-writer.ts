@@ -164,6 +164,33 @@ export function createLearningWriter(
         return restored.length === 1;
       });
     },
+    setMasteryThresholdOverride: async (
+      authentication,
+      id,
+      requiredConsecutiveDays,
+    ) => {
+      if (
+        requiredConsecutiveDays !== null &&
+        (!Number.isInteger(requiredConsecutiveDays) ||
+          requiredConsecutiveDays < 1 ||
+          requiredConsecutiveDays > 30)
+      )
+        throw new Error("Mastery threshold must be an integer from 1 to 30.");
+      const userId = await requireUser(authentication);
+      return withUserDatabase(database, authentication, async (transaction) => {
+        const updated = await transaction
+          .update(learningItems)
+          .set({
+            masteryThresholdOverride: requiredConsecutiveDays,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(eq(learningItems.userId, userId), eq(learningItems.id, id)),
+          )
+          .returning({ id: learningItems.id });
+        return updated.length === 1;
+      });
+    },
     getRemovalPolicy: async (authentication) => {
       const userId = await requireUser(authentication);
       return withUserDatabase(database, authentication, async (transaction) => {

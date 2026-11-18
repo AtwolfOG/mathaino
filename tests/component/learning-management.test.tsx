@@ -16,6 +16,9 @@ const item: LearningItemView = {
   state: "learning",
   status: "learning",
   archived: false,
+  masteryThreshold: 3,
+  defaultMasteryThreshold: 3,
+  usesDefaultMasteryThreshold: true,
 };
 
 afterEach(() => vi.unstubAllGlobals());
@@ -61,6 +64,32 @@ test("archived library items can be restored", async () => {
     method: "PATCH",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ archived: false }),
+  });
+});
+
+test("an active item can override its mastery threshold", async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValue(Response.json({ masteryThreshold: 5 }, { status: 200 }));
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <LearningLibrary initialItems={[item]} defaultRemovalPolicy="archive" />,
+  );
+  fireEvent.click(screen.getByText("Manage"));
+  fireEvent.change(screen.getByLabelText("Days to mastery for John 3:16"), {
+    target: { value: "5" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save mastery days" }));
+
+  await waitFor(() =>
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "John 3:16 mastery requirement saved.",
+    ),
+  );
+  expect(fetch).toHaveBeenCalledWith(`/api/learning-items/${item.id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ masteryThreshold: 5 }),
   });
 });
 

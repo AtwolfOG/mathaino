@@ -141,17 +141,63 @@ test("the learning library distinguishes learning, mastered, due, and archived i
     await prepareQueue(db);
     await asFixtureUser(db, aliceId, (scoped) =>
       scoped.execute(sql`
-        update learning_items set archived_at = now() where id = ${otherItemId}
+        update learning_items
+        set archived_at = now(), mastery_threshold_override = 5
+        where id = ${otherItemId}
       `),
     );
     const reader = createLearningReader(db, { now: () => now });
     const items = await reader.list(authentication(aliceId));
     expect(
-      items.map(({ id, status, archived }) => ({ id, status, archived })),
+      items.map(
+        ({
+          id,
+          status,
+          archived,
+          masteryThreshold,
+          defaultMasteryThreshold,
+          usesDefaultMasteryThreshold,
+        }) => ({
+          id,
+          status,
+          archived,
+          masteryThreshold,
+          defaultMasteryThreshold,
+          usesDefaultMasteryThreshold,
+        }),
+      ),
     ).toEqual([
-      { id: itemId, status: "learning", archived: false },
-      { id: otherItemId, status: "learning", archived: true },
-      { id: thirdItemId, status: "review-due", archived: false },
-      { id: fourthItemId, status: "mastered", archived: false },
+      {
+        id: itemId,
+        status: "learning",
+        archived: false,
+        masteryThreshold: 3,
+        defaultMasteryThreshold: 3,
+        usesDefaultMasteryThreshold: true,
+      },
+      {
+        id: otherItemId,
+        status: "learning",
+        archived: true,
+        masteryThreshold: 5,
+        defaultMasteryThreshold: 3,
+        usesDefaultMasteryThreshold: false,
+      },
+      {
+        id: thirdItemId,
+        status: "review-due",
+        archived: false,
+        masteryThreshold: 3,
+        defaultMasteryThreshold: 3,
+        usesDefaultMasteryThreshold: true,
+      },
+      {
+        id: fourthItemId,
+        status: "mastered",
+        archived: false,
+        masteryThreshold: 3,
+        defaultMasteryThreshold: 3,
+        usesDefaultMasteryThreshold: true,
+      },
     ]);
   }));

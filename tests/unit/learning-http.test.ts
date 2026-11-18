@@ -123,6 +123,7 @@ function writer(overrides: Partial<LearningWriter>): LearningWriter {
     add: async () => ({ added: 0, existing: 0, restored: 0 }),
     remove: async () => null,
     restore: async () => false,
+    setMasteryThresholdOverride: async () => false,
     getRemovalPolicy: async () => "archive",
     setRemovalPolicy: async () => undefined,
     ...overrides,
@@ -194,4 +195,41 @@ test("foreign learning-item mutations return not found", async () => {
     writer({ remove: async () => null }),
   );
   expect(response.status).toBe(404);
+});
+
+test("an item mastery threshold override can be set or cleared", async () => {
+  const id = "20000000-0000-4000-8000-000000000001";
+  const context = authentication(userId);
+  const setMasteryThresholdOverride = vi
+    .fn<LearningWriter["setMasteryThresholdOverride"]>()
+    .mockResolvedValue(true);
+  const patch = (masteryThreshold: number | null) =>
+    new Request(`https://mathaino.test/api/learning-items/${id}`, {
+      method: "PATCH",
+      headers: {
+        origin: "https://mathaino.test",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ masteryThreshold }),
+    });
+
+  const response = await handleLearningRequest(
+    patch(5),
+    reader,
+    context,
+    id,
+    writer({ setMasteryThresholdOverride }),
+  );
+  expect(response.status).toBe(200);
+  await expect(response.json()).resolves.toEqual({ masteryThreshold: 5 });
+  expect(setMasteryThresholdOverride).toHaveBeenCalledWith(context, id, 5);
+
+  const invalid = await handleLearningRequest(
+    patch(31),
+    reader,
+    context,
+    id,
+    writer({ setMasteryThresholdOverride }),
+  );
+  expect(invalid.status).toBe(400);
 });

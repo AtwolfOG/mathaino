@@ -11,6 +11,9 @@ export interface LearningItemView {
   state: "learning" | "mastered";
   status: "learning" | "mastered" | "review-due";
   archived: boolean;
+  masteryThreshold: number;
+  defaultMasteryThreshold: number;
+  usesDefaultMasteryThreshold: boolean;
 }
 export interface LearningReader {
   list(authentication: AuthenticationContext): Promise<LearningItemView[]>;

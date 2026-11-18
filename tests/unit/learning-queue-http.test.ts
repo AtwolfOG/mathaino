@@ -32,6 +32,7 @@ function writer(overrides: Partial<LearningWriter> = {}): LearningWriter {
     add: async () => ({ added: 0, existing: 0, restored: 0 }),
     remove: async () => null,
     restore: async () => false,
+    setMasteryThresholdOverride: async () => false,
     getRemovalPolicy: async () => "archive",
     setRemovalPolicy: async () => undefined,
     ...overrides,

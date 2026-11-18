@@ -7,6 +7,7 @@ import {
   bibleBooks,
   bibleVerses,
   learningItems,
+  learningPreferences,
   reviewSchedules,
 } from "./schema.ts";
 import { withUserDatabase } from "./with-user.ts";
@@ -25,6 +26,8 @@ export function createLearningReader(
     text: bibleVerses.text,
     state: learningItems.state,
     archivedAt: learningItems.archivedAt,
+    masteryThresholdOverride: learningItems.masteryThresholdOverride,
+    defaultMasteryThreshold: learningPreferences.masteryThreshold,
     nextDueAt: reviewSchedules.nextDueAt,
   };
   return {
@@ -49,6 +52,10 @@ export function createLearningReader(
               eq(reviewSchedules.userId, learningItems.userId),
               eq(reviewSchedules.learningItemId, learningItems.id),
             ),
+          )
+          .leftJoin(
+            learningPreferences,
+            eq(learningPreferences.userId, learningItems.userId),
           )
           .where(eq(learningItems.userId, userId))
           .orderBy(asc(learningItems.queueOrder), asc(learningItems.id));
@@ -77,6 +84,10 @@ export function createLearningReader(
               eq(reviewSchedules.learningItemId, learningItems.id),
             ),
           )
+          .leftJoin(
+            learningPreferences,
+            eq(learningPreferences.userId, learningItems.userId),
+          )
           .where(
             and(eq(learningItems.userId, userId), eq(learningItems.id, id)),
           )
@@ -91,13 +102,25 @@ function toView<
   T extends {
     state: "learning" | "mastered";
     archivedAt: Date | null;
+    masteryThresholdOverride: number | null;
+    defaultMasteryThreshold: number | null;
     nextDueAt: Date | null;
   },
 >(row: T, now: Date) {
-  const { archivedAt, nextDueAt, ...item } = row;
+  const {
+    archivedAt,
+    masteryThresholdOverride,
+    defaultMasteryThreshold,
+    nextDueAt,
+    ...item
+  } = row;
+  const accountMasteryThreshold = defaultMasteryThreshold ?? 3;
   return {
     ...item,
     archived: archivedAt !== null,
+    masteryThreshold: masteryThresholdOverride ?? accountMasteryThreshold,
+    defaultMasteryThreshold: accountMasteryThreshold,
+    usesDefaultMasteryThreshold: masteryThresholdOverride === null,
     status:
       item.state === "learning"
         ? ("learning" as const)

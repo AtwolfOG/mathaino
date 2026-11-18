@@ -141,3 +141,27 @@ test("the same verse can belong independently to different learners", () =>
     expect(aliceItems.rows).toEqual([{ user_id: aliceId }]);
     expect(bobItems.rows).toEqual([{ user_id: bobId }]);
   }));
+
+test("an owner can set or clear an item mastery threshold override", () =>
+  withTestDatabase(async (database) => {
+    await insertLearningFixture(database);
+    const writer = createLearningWriter(database);
+    await writer.add(authentication(aliceId), [references[0]!]);
+    const stored = await asFixtureUser(database, aliceId, (scoped) =>
+      scoped.execute(sql`select id from learning_items`),
+    );
+    const id = String(stored.rows[0]?.id);
+
+    await expect(
+      writer.setMasteryThresholdOverride(authentication(bobId), id, 5),
+    ).resolves.toBe(false);
+    await expect(
+      writer.setMasteryThresholdOverride(authentication(aliceId), id, 5),
+    ).resolves.toBe(true);
+    await expect(
+      writer.setMasteryThresholdOverride(authentication(aliceId), id, null),
+    ).resolves.toBe(true);
+    await expect(
+      writer.setMasteryThresholdOverride(authentication(aliceId), id, 0),
+    ).rejects.toThrow("Mastery threshold must be an integer from 1 to 30.");
+  }));

@@ -79,6 +79,29 @@ test("mastery state and its timestamp must agree", () =>
     await insertLearning(db, aliceId, itemId, "mastered");
   }));
 
+test("learning items accept only valid optional mastery threshold overrides", () =>
+  withTestDatabase(async (db) => {
+    await insertUser(db);
+    await insertReference(db);
+    await asFixtureUser(db, aliceId, (tx) =>
+      tx.execute(sql`
+        insert into learning_items
+          (id, user_id, verse_id, mastery_threshold_override)
+        values (${itemId}, ${aliceId}, ${verseId}, 30)
+      `),
+    );
+    await expectDatabaseError(
+      asFixtureUser(db, aliceId, (tx) =>
+        tx.execute(sql`
+          update learning_items
+          set mastery_threshold_override = 0
+          where id = ${itemId}
+        `),
+      ),
+      "23514",
+    );
+  }));
+
 test("reference deletion cannot destroy learning progress", () =>
   withTestDatabase(async (db) => {
     await requireTables(db, ["learning_items"]);

@@ -9,6 +9,11 @@ import {
   type RecitationProgress,
 } from "../../application/recitation.ts";
 import { isValidIanaTimeZone } from "../../application/practice-settings.ts";
+import { localCalendarDate } from "../../domain/calendar-day.ts";
+import {
+  countConsecutiveSuccessfulDays,
+  determineMasteryTransition,
+} from "../../domain/mastery.ts";
 import { countConsecutiveCalendarDays } from "../../domain/practice-progress.ts";
 import type { DatabaseTransaction, TransactionHost } from "./client.ts";
 import {
@@ -81,6 +86,7 @@ export function createRecitationAttemptStore(
               id: learningItems.id,
               state: learningItems.state,
               archivedAt: learningItems.archivedAt,
+              masteryThresholdOverride: learningItems.masteryThresholdOverride,
               expectedText: bibleVerses.text,
             })
             .from(learningItems)
@@ -112,11 +118,14 @@ export function createRecitationAttemptStore(
             })
             .from(learningPreferences)
             .where(eq(learningPreferences.userId, userId))
-            .limit(1);
+            .limit(1)
+            .for("update");
           const preference = settings[0];
           if (!preference || !isValidIanaTimeZone(preference.timeZone))
             throw new Error("Invalid stored practice settings.");
-          const practiceDate = localDate(now, preference.timeZone);
+          const masteryThreshold =
+            target.masteryThresholdOverride ?? preference.masteryThreshold;
+          const practiceDate = localCalendarDate(now, preference.timeZone);
           const evaluation = assess(target.expectedText);
           const inserted = await transaction
             .insert(practiceAttempts)
@@ -154,7 +163,20 @@ export function createRecitationAttemptStore(
               ],
             });
 
-          if (evaluation.passed) {
+          const successDates = await loadSuccessDates(
+            transaction,
+            userId,
+            target.id,
+          );
+          const transition = determineMasteryTransition({
+            state: target.state,
+            requiredConsecutiveDays: masteryThreshold,
+            successfulDates: successDates,
+            attemptedDate: practiceDate,
+            successful: evaluation.passed,
+          });
+
+          if (transition.creditSuccessfulDay) {
             await transaction
               .insert(learningSuccessDays)
               .values({
@@ -172,14 +194,7 @@ export function createRecitationAttemptStore(
                   learningSuccessDays.practiceDate,
                 ],
               });
-            const dates = await loadSuccessDates(
-              transaction,
-              userId,
-              target.id,
-            );
-            if (
-              countConsecutiveCalendarDays(dates) >= preference.masteryThreshold
-            ) {
+            if (transition.transitionToMastered) {
               await transaction
                 .update(learningItems)
                 .set({ state: "mastered", masteredAt: now, updatedAt: now })
@@ -257,13 +272,23 @@ async function loadSuccessDates(
   const rows = await transaction
     .select({ date: learningSuccessDays.practiceDate })
     .from(learningSuccessDays)
+    .innerJoin(
+      practiceAttempts,
+      and(
+        eq(practiceAttempts.userId, learningSuccessDays.userId),
+        eq(practiceAttempts.id, learningSuccessDays.sourceAttemptId),
+      ),
+    )
     .where(
       and(
         eq(learningSuccessDays.userId, userId),
         eq(learningSuccessDays.learningItemId, itemId),
       ),
     )
-    .orderBy(asc(learningSuccessDays.practiceDate));
+    .orderBy(
+      asc(practiceAttempts.practicedAt),
+      asc(learningSuccessDays.createdAt),
+    );
   return rows.map((row) => row.date);
 }
 
@@ -278,7 +303,10 @@ async function loadProgress(
     .where(eq(learningPreferences.userId, userId))
     .limit(1);
   const item = await transaction
-    .select({ state: learningItems.state })
+    .select({
+      state: learningItems.state,
+      masteryThresholdOverride: learningItems.masteryThresholdOverride,
+    })
     .from(learningItems)
     .where(and(eq(learningItems.userId, userId), eq(learningItems.id, itemId)))
     .limit(1);
@@ -293,28 +321,12 @@ async function loadProgress(
   if (!preference || !learningItem)
     throw new Error("Progress could not be loaded.");
   return {
-    consecutiveDays: countConsecutiveCalendarDays(successDates),
-    masteryThreshold: preference.masteryThreshold,
+    consecutiveDays: countConsecutiveSuccessfulDays(successDates),
+    masteryThreshold:
+      learningItem.masteryThresholdOverride ?? preference.masteryThreshold,
     mastered: learningItem.state === "mastered",
     practiceStreak: countConsecutiveCalendarDays(
       practiceDates.map((row) => row.date),
     ),
   };
-}
-
-function localDate(instant: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(instant);
-  const value = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value;
-  const year = value("year");
-  const month = value("month");
-  const day = value("day");
-  if (!year || !month || !day)
-    throw new Error("Practice date could not be derived.");
-  return `${year}-${month}-${day}`;
 }

@@ -177,7 +177,8 @@ As a learner, I can choose how many consecutive successful days establish master
 - A gap in successful calendar days breaks the consecutive run; previous success
   history is not fabricated or erased to disguise the gap.
 - The per-user threshold defaults to three days and accepts whole numbers from
-  one through 30. Changes retain credited days and apply on the next successful
+  one through 30. A learning item may override that default with its own value in
+  the same range. Changes retain credited days and apply on the next successful
   attempt; already-mastered items remain mastered.
 - A success seals that verse's calendar-day credit. Failures are recorded but do
   not remove same-day or earlier credit. A calendar gap breaks the consecutive run.
@@ -267,6 +268,9 @@ Use a validated account IANA timezone, defaulting to `Etc/UTC`, a trusted server
 clock, UTC event instants, and the local calendar date in the effective zone at
 server acceptance. Preserve the accepted zone and date on facts so later timezone
 changes do not rebucket history. Typed attempts cannot be backdated by the browser.
+If a timezone change attributes a new attempt to the same or an earlier date than
+the item's latest accepted successful day, preserve the attempt but do not award
+another mastery day or backfill an earlier gap.
 The first review is due at the same local wall-clock time one calendar day after
 mastery, rather than after a fixed 24-hour duration. Travel and offline submission
 policies beyond server-accepted typed attempts remain unresolved.
@@ -319,7 +323,7 @@ multiple speculative implementations.
 | D-04 | Active learning before due reviews, deterministic persisted order, no daily limit, and persisted cursor approved; post-attempt eligibility remains with D-08                                          | US-04                         |
 | D-05 | Deterministic word alignment and scoring approved as documented above; case, harmless punctuation, whitespace, paragraph markers, source wording/notes, references, and hints have explicit treatment | US-05/06, mastery             |
 | D-06 | Local-first browser transcription approved; ordinary Web Speech is opt-in, local Mac Whisper is development-only, raw recordings are not retained, and transcript correction/retention remain open    | US-06, privacy                |
-| D-07 | Per-user threshold defaults to 3, range 1–30; changes apply on next success without revoking mastery                                                                                                  | US-07                         |
+| D-07 | Account threshold defaults to 3, range 1–30; optional item overrides use the same range; changes apply on next success without revoking mastery                                                       | US-07                         |
 | D-08 | Success seals verse-day credit; failures remain attempts but do not erase credit; request retries are idempotent                                                                                      | US-05/06/07                   |
 | D-09 | Any persisted typed assessment qualifies a practice day; review qualification and streak display details remain open                                                                                  | US-08                         |
 | D-10 | First review is one local calendar day after mastery; later intervals, anchors, early/overdue/repeated reviews, failure/demotion and policy changes remain open                                       | US-09                         |

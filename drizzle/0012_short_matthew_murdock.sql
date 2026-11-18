@@ -1,0 +1,2 @@
+ALTER TABLE "learning_items" ADD COLUMN "mastery_threshold_override" integer;--> statement-breakpoint
+ALTER TABLE "learning_items" ADD CONSTRAINT "learning_items_mastery_threshold_override_valid" CHECK ("learning_items"."mastery_threshold_override" is null or "learning_items"."mastery_threshold_override" between 1 and 30);

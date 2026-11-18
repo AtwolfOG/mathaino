@@ -6,6 +6,7 @@ import {
   RecitationNotFoundError,
 } from "@/application/recitation";
 import { createRecitationAttemptStore } from "@/infrastructure/database/recitation";
+import { createLearningQueue } from "@/infrastructure/database/learning-queue";
 import {
   aliceId,
   asFixtureUser,
@@ -214,6 +215,133 @@ test("three consecutive successful days master the item and schedule its first r
         from review_schedules where learning_item_id = ${itemId}
       `);
       expect(schedule.rows).toEqual([{ expected: true }]);
+      expect(
+        (
+          await tx.execute(sql`
+            select
+              (select count(*)::int from practice_attempts) as attempts,
+              (select count(*)::int from learning_success_days) as success_days
+          `)
+        ).rows,
+      ).toEqual([{ attempts: 3, success_days: 3 }]);
+    });
+  }));
+
+test("an item mastery threshold override controls its transition", () =>
+  withTestDatabase(async (db) => {
+    await prepare(db);
+    await asFixtureUser(db, aliceId, (tx) =>
+      tx.execute(sql`
+        update learning_items
+        set mastery_threshold_override = 1
+        where id = ${itemId}
+      `),
+    );
+    const service = createRecitationService(
+      createRecitationAttemptStore(db, {
+        now: () => new Date("2026-01-02T12:00:00Z"),
+      }),
+    );
+
+    const result = await service.submit(
+      auth(aliceId),
+      command("Fixture text annotation"),
+    );
+
+    expect(result.progress).toMatchObject({
+      consecutiveDays: 1,
+      masteryThreshold: 1,
+      mastered: true,
+    });
+    await expect(
+      createLearningQueue(db, {
+        now: () => new Date("2026-01-02T12:00:00Z"),
+      }).read(auth(aliceId)),
+    ).resolves.toMatchObject({ current: null, total: 0 });
+    await expect(
+      createLearningQueue(db, {
+        now: () => new Date("2026-01-03T12:00:00Z"),
+      }).read(auth(aliceId)),
+    ).resolves.toMatchObject({
+      current: { id: itemId, status: "review-due" },
+      total: 1,
+    });
+  }));
+
+test("a timezone change cannot backfill a missed mastery day", () =>
+  withTestDatabase(async (db) => {
+    await prepare(db);
+    await asFixtureUser(db, aliceId, (tx) =>
+      tx.execute(sql`
+        insert into learning_preferences (user_id, time_zone)
+        values (${aliceId}, 'Etc/UTC')
+      `),
+    );
+    let now = new Date("2026-01-01T09:00:00Z");
+    const service = createRecitationService(
+      createRecitationAttemptStore(db, { now: () => now }),
+    );
+    await service.submit(
+      auth(aliceId),
+      command(
+        "Fixture text annotation",
+        "40000000-0000-4000-8000-000000000030",
+      ),
+    );
+    now = new Date("2026-01-03T09:00:00Z");
+    await service.submit(
+      auth(aliceId),
+      command(
+        "Fixture text annotation",
+        "40000000-0000-4000-8000-000000000031",
+      ),
+    );
+    await asFixtureUser(db, aliceId, (tx) =>
+      tx.execute(sql`
+        update learning_preferences
+        set time_zone = 'America/Adak'
+        where user_id = ${aliceId}
+      `),
+    );
+    now = new Date("2026-01-03T09:30:00Z");
+    const result = await service.submit(
+      auth(aliceId),
+      command(
+        "Fixture text annotation",
+        "40000000-0000-4000-8000-000000000032",
+      ),
+    );
+
+    expect(result.progress).toMatchObject({
+      consecutiveDays: 1,
+      mastered: false,
+    });
+    await asFixtureUser(db, aliceId, async (tx) => {
+      expect(
+        (
+          await tx.execute(sql`
+            select practice_date::text, time_zone
+            from practice_attempts
+            order by practiced_at
+          `)
+        ).rows,
+      ).toEqual([
+        { practice_date: "2026-01-01", time_zone: "Etc/UTC" },
+        { practice_date: "2026-01-03", time_zone: "Etc/UTC" },
+        { practice_date: "2026-01-02", time_zone: "America/Adak" },
+      ]);
+      expect(
+        (
+          await tx.execute(sql`
+            select practice_date::text
+            from learning_success_days
+            order by practice_date
+          `)
+        ).rows,
+      ).toEqual([
+        { practice_date: "2026-01-01" },
+        { practice_date: "2026-01-03" },
+      ]);
     });
   }));
 

@@ -79,12 +79,32 @@ export async function handleLearningRequest(
         ? json({ removed })
         : json({ error: "Learning item not found." }, 404);
     }
-    if (!recordWith(value, ["archived"]) || value.archived !== false)
-      return json({ error: "Invalid restore request." }, 400);
-    const restored = await writer.restore(authentication, id);
-    return restored
-      ? json({ restored: true })
-      : json({ error: "Learning item not found." }, 404);
+    if (recordWith(value, ["archived"]) && value.archived === false) {
+      const restored = await writer.restore(authentication, id);
+      return restored
+        ? json({ restored: true })
+        : json({ error: "Learning item not found." }, 404);
+    }
+    if (recordWith(value, ["masteryThreshold"])) {
+      const threshold = value.masteryThreshold;
+      if (
+        threshold !== null &&
+        (typeof threshold !== "number" ||
+          !Number.isInteger(threshold) ||
+          threshold < 1 ||
+          threshold > 30)
+      )
+        return json({ error: "Invalid mastery threshold." }, 400);
+      const updated = await writer.setMasteryThresholdOverride(
+        authentication,
+        id,
+        threshold,
+      );
+      return updated
+        ? json({ masteryThreshold: threshold })
+        : json({ error: "Learning item not found." }, 404);
+    }
+    return json({ error: "Invalid learning item update." }, 400);
   }
   const body = parseSelection(value);
   if (!body) return json({ error: "Invalid verse selection." }, 400);

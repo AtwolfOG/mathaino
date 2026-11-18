@@ -279,6 +279,7 @@ export const learningItems = pgTable(
       .notNull()
       .default("learning"),
     masteredAt: timestamp("mastered_at", { withTimezone: true }),
+    masteryThresholdOverride: integer("mastery_threshold_override"),
     queueOrder: bigint("queue_order", { mode: "number" })
       .notNull()
       .generatedAlwaysAsIdentity(),
@@ -306,6 +307,10 @@ export const learningItems = pgTable(
     check(
       "learning_items_mastery_consistent",
       sql`(${table.state} = 'mastered') = (${table.masteredAt} is not null)`,
+    ),
+    check(
+      "learning_items_mastery_threshold_override_valid",
+      sql`${table.masteryThresholdOverride} is null or ${table.masteryThresholdOverride} between 1 and 30`,
     ),
     ownerPolicy("learning_items_owner_access", table.userId),
   ],

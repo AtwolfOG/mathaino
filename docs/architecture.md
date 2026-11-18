@@ -122,7 +122,8 @@ catalogue metadata and one chapter of verse text rather than the full corpus.
    bounds. Resolve the learning item under the trusted owner.
 2. Obtain final text: directly from validated typing input or through the speech
    adapter. External calls happen outside persistence transactions.
-3. Load authoritative verse text and effective assessment/time/mastery policies.
+3. Load authoritative verse text and effective assessment/time/mastery policies,
+   resolving an optional item mastery threshold override before the account default.
 4. Assess through a pure domain function; do not accept client-supplied success,
    counters, mastery state, due dates, or day credit.
 5. Apply the attempt, per-verse day effect, mastery transition, qualifying practice
@@ -166,10 +167,10 @@ Put calendar/day and review computations in domain functions receiving explicit
 time inputs. The application obtains the current instant through an injected
 clock; adapters handle serialization and external timezone configuration.
 
-The proposed IANA-zone/server-clock approach in requirements section 5 is pending
-D-12. Storage supports an explicit practice instant, attributed date, and zone
-without choosing attribution rules. If adopted, retain the accepted instant,
-attributed local date, and zone context needed to interpret activity consistently.
+The approved IANA-zone/server-clock approach in requirements section 5 retains the
+accepted instant, attributed local date, and zone context needed to interpret
+activity consistently. A timezone change cannot backfill mastery progress with a
+same or earlier local date.
 Never compare date labels
 lexicographically across unvalidated formats or treat a day as 86,400 seconds.
 

@@ -13,6 +13,9 @@ export function LearningLibrary({
 }) {
   const [items, setItems] = useState(initialItems);
   const [choices, setChoices] = useState<Record<string, RemovalPolicy>>({});
+  const [masteryChoices, setMasteryChoices] = useState<Record<string, string>>(
+    {},
+  );
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
@@ -71,6 +74,40 @@ export function LearningLibrary({
     }
   }
 
+  async function saveMasteryThreshold(item: LearningItemView) {
+    const selected = masteryChoices[item.id];
+    const masteryThreshold = selected === "" ? null : Number(selected);
+    setPendingId(item.id);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/learning-items/${item.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ masteryThreshold }),
+      });
+      if (!response.ok) throw new Error("Mastery requirement update failed");
+      setItems((current) =>
+        current.map((entry) =>
+          entry.id === item.id
+            ? {
+                ...entry,
+                masteryThreshold:
+                  masteryThreshold ?? entry.defaultMasteryThreshold,
+                usesDefaultMasteryThreshold: masteryThreshold === null,
+              }
+            : entry,
+        ),
+      );
+      setMessage(`${reference(item)} mastery requirement saved.`);
+    } catch {
+      setMessage(
+        `${reference(item)} mastery requirement could not be saved. Try again.`,
+      );
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   if (!items.length)
     return <p className="library-empty">Your learning library is empty.</p>;
 
@@ -103,6 +140,42 @@ export function LearningLibrary({
                 ) : (
                   <details>
                     <summary>Manage</summary>
+                    <label>
+                      Days to mastery for {label}
+                      <select
+                        value={
+                          masteryChoices[item.id] ??
+                          (item.usesDefaultMasteryThreshold
+                            ? ""
+                            : String(item.masteryThreshold))
+                        }
+                        onChange={(event) =>
+                          setMasteryChoices((current) => ({
+                            ...current,
+                            [item.id]: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">
+                          Use account default ({item.defaultMasteryThreshold})
+                        </option>
+                        {Array.from(
+                          { length: 30 },
+                          (_, index) => index + 1,
+                        ).map((days) => (
+                          <option key={days} value={days}>
+                            {days}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={pendingId === item.id}
+                      onClick={() => saveMasteryThreshold(item)}
+                    >
+                      Save mastery days
+                    </button>
                     <label>
                       Removal choice for {label}
                       <select

@@ -20,6 +20,11 @@ export interface LearningWriter {
     policy?: RemovalPolicy,
   ): Promise<RemovalPolicy | null>;
   restore(authentication: AuthenticationContext, id: string): Promise<boolean>;
+  setMasteryThresholdOverride(
+    authentication: AuthenticationContext,
+    id: string,
+    requiredConsecutiveDays: number | null,
+  ): Promise<boolean>;
   getRemovalPolicy(
     authentication: AuthenticationContext,
   ): Promise<RemovalPolicy>;
