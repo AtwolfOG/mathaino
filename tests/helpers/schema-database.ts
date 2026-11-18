@@ -168,8 +168,8 @@ export async function insertSchedule(
 ) {
   await asFixtureUser(transaction, owner, (db) =>
     db.execute(sql`
-    insert into review_schedules (user_id, learning_item_id, next_due_at, policy_id, created_at, updated_at)
-    values (${owner}, ${learningItem}, '2026-01-08T12:00:00Z', 'fixture-review-v1', ${fixtureTime}, ${fixtureTime})
+    insert into review_schedules (user_id, learning_item_id, next_due_at, interval_stage, policy_id, created_at, updated_at)
+    values (${owner}, ${learningItem}, '2026-01-08T12:00:00Z', 0, 'fixture-review-v1', ${fixtureTime}, ${fixtureTime})
   `),
   );
 }

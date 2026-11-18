@@ -211,10 +211,19 @@ test("three consecutive successful days master the item and schedule its first r
         ).rows,
       ).toEqual([{ state: "mastered" }]);
       const schedule = await tx.execute(sql`
-        select next_due_at = '2026-03-10T17:30:00Z'::timestamptz as expected
+        select
+          next_due_at = '2026-03-10T17:30:00Z'::timestamptz as expected,
+          interval_stage,
+          policy_id
         from review_schedules where learning_item_id = ${itemId}
       `);
-      expect(schedule.rows).toEqual([{ expected: true }]);
+      expect(schedule.rows).toEqual([
+        {
+          expected: true,
+          interval_stage: 0,
+          policy_id: "fixed-review-ladder-v1",
+        },
+      ]);
       expect(
         (
           await tx.execute(sql`

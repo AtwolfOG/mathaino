@@ -63,9 +63,14 @@ progress is derived from those facts rather than maintained as a competing count
 
 Technical failures are not stored as assessed failures or successes. For typed
 learning, a success seals verse-day credit and any persisted assessment qualifies
-the account day. Review failure and demotion remain unresolved.
+the account day. Accepted typed reviews also qualify the account day, while their
+success or failure does not alter learning-day facts or mastered state.
 
-Schedules require an explicit due instant and policy ID, with no interval default.
+Schedules require an explicit due instant, interval stage, and policy ID, with no
+hidden interval default. `fixed-review-ladder-v1` uses stages for local-calendar
+intervals `1, 3, 7, 14, 30, 60, 120`; success advances one stage and failure resets
+to stage zero. Review attempts preserve the immutable outcome history while the
+single schedule row stores current scheduling state.
 The constant `learning_state = 'mastered'` participates in a composite FK. If a
 future approved operation demotes an item, it must remove the schedule before
 changing state, atomically in the same transaction. This constraint does not

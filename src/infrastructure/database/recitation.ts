@@ -15,6 +15,7 @@ import {
   determineMasteryTransition,
 } from "../../domain/mastery.ts";
 import { countConsecutiveCalendarDays } from "../../domain/practice-progress.ts";
+import { reviewPolicyId } from "../../domain/review-schedule.ts";
 import type { DatabaseTransaction, TransactionHost } from "./client.ts";
 import {
   bibleVerses,
@@ -207,12 +208,13 @@ export function createRecitationAttemptStore(
                 );
               await transaction.execute(sql`
                 insert into review_schedules
-                  (learning_item_id, user_id, next_due_at, policy_id)
+                  (learning_item_id, user_id, next_due_at, interval_stage, policy_id)
                 values (
                   ${target.id},
                   ${userId},
                   ((${now}::timestamptz at time zone ${preference.timeZone}) + interval '1 day') at time zone ${preference.timeZone},
-                  ${reviewPolicy}
+                  0,
+                  ${reviewPolicyId}
                 )
                 on conflict (learning_item_id) do nothing
               `);
@@ -232,7 +234,6 @@ export function createRecitationAttemptStore(
 
 const assessmentPolicy = "word-levenshtein-90-v1";
 const dayPolicy = "server-accepted-account-zone-v1";
-const reviewPolicy = "first-review-next-local-day-v1";
 
 async function findOperation(
   transaction: DatabaseTransaction,

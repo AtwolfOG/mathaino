@@ -5,8 +5,8 @@ TypeScript, Tailwind CSS, Drizzle/PostgreSQL, Vitest/React Testing Library, and
 Playwright. PostgreSQL tables, migrations, forced ownership policies, seed
 infrastructure, and a trusted-authentication context port are implemented.
 Better Auth email/password, protected pages, owned learning lifecycle operations,
-the deterministic Today queue, typed assessment, and server-mediated voice
-recitation are implemented; due-review outcomes remain open.
+the deterministic Today queue, typed assessment, server-mediated voice
+recitation, and deterministic typed reviews are implemented.
 See [development.md](development.md) and [database.md](database.md).
 
 Read with [requirements.md](requirements.md) and [AGENTS.md](../AGENTS.md).
@@ -78,7 +78,7 @@ types, indexes, migrations, and cleanup rules are documented in
 | Learning record        | One user's progress for one verse                                      | Unique account/reference pair; learning or mastered; retains sufficient successful-day and mastery context                         |
 | Recitation attempt     | One logical submitted practice operation and assessed outcome          | Belongs to a learning record; typing/voice mode, accepted time context, approved policy context and outcome; no raw audio required |
 | Daily activity         | Evidence that approved activity qualified on a calendar date           | Belongs to one user; supports streak derivation without counting repeated activity twice                                           |
-| Review schedule        | Effective scheduling state for a mastered item                         | Belongs to a learning record; next due and necessary policy state determined by D-10                                               |
+| Review schedule        | Effective scheduling state for a mastered item                         | Belongs to a learning record; stores next due, interval stage, and explicit policy                                                 |
 | Review outcome         | Accepted review result and its scheduling effect                       | Belongs to the same owner's learning record; can reference the recitation attempt rather than duplicate it                         |
 
 ```text
@@ -158,8 +158,8 @@ so they can be tested independently and coordinated by a small use case.
 - Stable queue order is assigned once when an item is created. Archive/restore
   retains it; permanent deletion followed by adding creates a new position.
 - Technical speech or validation failures do not enter the failure/reset policy.
-- Later review outcomes still require D-10. Initial typed learning may create the
-  approved first-review schedule but does not accept due-review submissions.
+- Typed due reviews use the approved fixed interval ladder. Success advances one
+  stage, failure resets to one day, and neither outcome changes mastered state.
 
 ## 5. Day attribution, streaks, and scheduling
 
@@ -179,15 +179,14 @@ one concerns successful recall of a particular verse; the other concerns whateve
 activity D-09 qualifies. Do not derive one counter from the other. Midnight/DST,
 current-day display, travel, and offline submissions require explicit examples.
 
-For reviews, evaluate due eligibility at read time using the approved policy.
-No background job is necessary merely to discover a due item. Initial mastery
-schedules the first review one local calendar day later. The application
-atomically applies each accepted later review's schedule effect. D-10 must choose
-later intervals/algorithm, late/early anchors, repeated
-same-day reviews, failed recall, and future policy changes. Do not install a
-spaced-repetition dependency or scheduler before that choice is justified.
-The user selected timezone-aware next-due instants for schema storage; that part
-of D-10 is resolved, without selecting scheduling intervals or day boundaries.
+For reviews, evaluate due eligibility at read time; no background job is needed.
+Initial mastery schedules stage zero one local calendar day later. Accepted typed
+reviews atomically record their immutable attempt and update the schedule using
+the `1, 3, 7, 14, 30, 60, 120` local-calendar-day ladder. Success advances one
+stage, failure resets to stage zero, and the trusted acceptance instant anchors
+the next due value in the account timezone. Early repeats are rejected. Future
+policy versions require an explicit migration rather than silently reinterpreting
+stored schedules.
 
 ## 6. Local KJV infrastructure
 

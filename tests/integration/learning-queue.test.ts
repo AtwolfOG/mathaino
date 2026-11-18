@@ -52,10 +52,10 @@ async function prepareQueue(db: TestTransaction) {
     `);
     await scoped.execute(sql`
       insert into review_schedules
-        (learning_item_id, user_id, next_due_at, policy_id)
+        (learning_item_id, user_id, next_due_at, interval_stage, policy_id)
       values
-        (${thirdItemId}, ${aliceId}, '2026-01-09T12:00:00Z', 'fixture-v1'),
-        (${fourthItemId}, ${aliceId}, '2026-01-11T12:00:00Z', 'fixture-v1')
+        (${thirdItemId}, ${aliceId}, '2026-01-09T12:00:00Z', 0, 'fixture-v1'),
+        (${fourthItemId}, ${aliceId}, '2026-01-11T12:00:00Z', 0, 'fixture-v1')
     `);
   });
 }

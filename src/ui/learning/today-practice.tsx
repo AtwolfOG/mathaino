@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import type { LearningQueueView } from "../../application/learning-queue.ts";
 import { RecitationPractice } from "./recitation-practice.tsx";
-import { VerseReveal } from "./typed-recitation.tsx";
+import type { ReviewResult } from "../../application/review.ts";
+import { TypedReview } from "./typed-review.tsx";
 import type { VoiceProviderSet } from "./voice-recitation.tsx";
 
 export function TodayPractice({
@@ -47,12 +48,35 @@ export function TodayPractice({
     }
   }
 
+  async function refreshAfterReview(result: ReviewResult) {
+    const interval = result.schedule.intervalDays;
+    setMessage(
+      `Review saved. Next review in ${interval} ${interval === 1 ? "day" : "days"}.`,
+    );
+    try {
+      const response = await fetch("/api/learning-queue");
+      const body: unknown = await response.json();
+      if (response.ok && isQueueResponse(body)) setQueue(body.queue);
+      else
+        setMessage(
+          "Review saved, but today's queue could not be refreshed. Reload the page.",
+        );
+    } catch {
+      setMessage(
+        "Review saved, but today's queue could not be refreshed. Reload the page.",
+      );
+    }
+  }
+
   if (!queue.current)
     return (
       <section className="today-empty" aria-labelledby="empty-queue-heading">
         <h2 id="empty-queue-heading">Nothing queued today</h2>
         <p>Choose a verse in the Bible reader to begin learning it.</p>
         <Link href="/bible">Choose verses</Link>
+        <p className="practice-status" role="status" aria-live="polite">
+          {message}
+        </p>
       </section>
     );
 
@@ -93,16 +117,13 @@ export function TodayPractice({
             createVoiceProviders={createVoiceProviders}
           />
         ) : (
-          <>
-            <VerseReveal itemId={item.id} verseText={item.text} />
-            <div className="review-unavailable">
-              <p>Typed review submission is not available yet.</p>
-              <p>
-                The review policy must be completed before an outcome can be
-                saved.
-              </p>
-            </div>
-          </>
+          <TypedReview
+            key={item.id}
+            itemId={item.id}
+            reference={`${item.bookName} ${item.chapter}:${item.verse}`}
+            verseText={item.text}
+            onSaved={(result) => void refreshAfterReview(result)}
+          />
         )}
       </article>
       <nav className="queue-navigation" aria-label="Learning queue">

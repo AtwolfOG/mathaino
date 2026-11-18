@@ -958,7 +958,47 @@ test("shows Local Whisper only when development mode and its provider are enable
   ).toBeInTheDocument();
 });
 
-test("due reviews explain why submission is unavailable", () => {
+test("due reviews submit typed recall and reload the authoritative queue", async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(
+      Response.json(
+        {
+          status: "recorded",
+          evaluation: {
+            normalizedExpected: "for god so loved the world",
+            normalizedSubmitted: "for god so loved the world",
+            differences: [],
+            accuracy: 100,
+            passed: true,
+            feedback: "Perfect match: no word differences.",
+          },
+          schedule: {
+            stage: 1,
+            intervalDays: 3,
+            nextDueAt: "2026-01-05T12:00:00.000Z",
+          },
+        },
+        { status: 201 },
+      ),
+    )
+    .mockResolvedValueOnce(
+      Response.json(
+        {
+          queue: {
+            current: null,
+            position: 0,
+            total: 0,
+            remaining: 0,
+            version: 0,
+            previousId: null,
+            nextId: null,
+          },
+        },
+        { status: 200 },
+      ),
+    );
+  vi.stubGlobal("fetch", fetch);
   render(
     <TodayPractice
       initialQueue={{
@@ -967,12 +1007,25 @@ test("due reviews explain why submission is unavailable", () => {
       }}
     />,
   );
-  expect(screen.queryByLabelText("Type John 3:16")).not.toBeInTheDocument();
-  expect(
-    screen.getByText(/Typed review submission is not available yet/),
-  ).toBeVisible();
-  fireEvent.click(screen.getByRole("button", { name: "Reveal verse" }));
-  expect(screen.getByText("For God so loved the world.")).toBeVisible();
+  fireEvent.change(screen.getByLabelText("Review John 3:16"), {
+    target: { value: "For God so loved the world" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Check review" }));
+
+  await waitFor(() =>
+    expect(
+      screen.getByRole("heading", { name: "Nothing queued today" }),
+    ).toBeVisible(),
+  );
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Review saved. Next review in 3 days.",
+  );
+  expect(fetch).toHaveBeenNthCalledWith(1, "/api/review-attempts", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: expect.stringContaining(`"itemId":"${firstId}"`),
+  });
+  expect(fetch).toHaveBeenNthCalledWith(2, "/api/learning-queue");
 });
 
 test("queue navigation persists before showing the next verse", async () => {

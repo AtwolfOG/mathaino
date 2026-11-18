@@ -9,6 +9,8 @@ import { createLearningQueue } from "../infrastructure/database/learning-queue.t
 import { createRecitationAttemptStore } from "../infrastructure/database/recitation.ts";
 import { createRecitationService } from "../application/recitation.ts";
 import { createPracticeSettings } from "../infrastructure/database/practice-settings.ts";
+import { createReviewAttemptStore } from "../infrastructure/database/review.ts";
+import { createReviewService } from "../application/review.ts";
 import { readLocalWhisperEnvironment } from "../infrastructure/config/local-whisper-environment.ts";
 import { createLocalWhisperTranscriber } from "../infrastructure/transcription/local-whisper-server.ts";
 
@@ -40,6 +42,7 @@ async function createServices() {
       recitation: createRecitationService(
         createRecitationAttemptStore(application.db),
       ),
+      review: createReviewService(createReviewAttemptStore(application.db)),
       practiceSettings: createPracticeSettings(application.db),
       authOrigin: config.baseURL,
     };

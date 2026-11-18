@@ -119,19 +119,29 @@ test("day completion must reference an attempt by the same owner on the same day
     );
   }));
 
-test("a mastered item has at most one review schedule with an explicit due instant", () =>
+test("a mastered item has at most one staged review schedule with an explicit due instant", () =>
   withTestDatabase(async (db) => {
     await prepare(db);
     await insertSchedule(db);
     await expectDatabaseError(insertSchedule(db), "23505");
     await asFixtureUser(db, aliceId, async (tx) => {
       const result = await tx.execute(
-        sql`select next_due_at = '2026-01-08T12:00:00Z'::timestamptz as same_instant, pg_typeof(next_due_at)::text as column_type from review_schedules`,
+        sql`select next_due_at = '2026-01-08T12:00:00Z'::timestamptz as same_instant, pg_typeof(next_due_at)::text as column_type, interval_stage from review_schedules`,
       );
       expect(result.rows).toEqual([
-        { same_instant: true, column_type: "timestamp with time zone" },
+        {
+          same_instant: true,
+          column_type: "timestamp with time zone",
+          interval_stage: 0,
+        },
       ]);
     });
+    await expectDatabaseError(
+      asFixtureUser(db, aliceId, (tx) =>
+        tx.execute(sql`update review_schedules set interval_stage = 7`),
+      ),
+      "23514",
+    );
   }));
 
 test("schedules cannot cross owners or exist for an unmastered item", () =>

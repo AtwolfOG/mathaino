@@ -543,6 +543,7 @@ export const reviewSchedules = pgTable(
     learningState: text("learning_state").notNull().default("mastered"),
     nextDueAt: timestamp("next_due_at", { withTimezone: true }).notNull(),
     lastReviewedAt: timestamp("last_reviewed_at", { withTimezone: true }),
+    intervalStage: integer("interval_stage").notNull(),
     policyId: text("policy_id").notNull(),
     ...timestamps(),
   },
@@ -571,6 +572,10 @@ export const reviewSchedules = pgTable(
     check(
       "review_schedules_policy_nonempty",
       sql`btrim(${table.policyId}) <> ''`,
+    ),
+    check(
+      "review_schedules_interval_stage_valid",
+      sql`${table.intervalStage} between 0 and 6`,
     ),
     ownerPolicy("review_schedules_owner_access", table.userId),
   ],

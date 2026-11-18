@@ -193,9 +193,9 @@ As a learner, I can see a streak that represents consecutive practice days.
 - Merely opening the app, loading the queue, or experiencing a technical failure
   does not qualify as assessed practice.
 - Streaks are account-specific and distinct from each verse's mastery run.
-- Any persisted assessed typing success or failure qualifies the account-wide
-  practice day. Validation and technical failures do not. Review qualification
-  and the current-day display rule remain part of the deferred review workflow.
+- Any persisted assessed typing success or failure, including a typed review,
+  qualifies the account-wide practice day. Validation and technical failures do
+  not. The current-day display rule remains deferred.
 
 ### US-09: Review mastered verses
 
@@ -207,8 +207,8 @@ As a learner, I am prompted to review mastered verses at spaced intervals.
 - Accepted reviews persist their outcome and scheduling effect exactly once.
 - A transcription error or rolled-back save cannot advance a review schedule;
   an unknown save outcome must be reconciled, not assumed to have rolled back.
-- Exact intervals, algorithm, overdue treatment, failed-review response, and
-  whether failed recall returns an item to learning are D-10.
+- The fixed review ladder, overdue treatment, failed-review response, and
+  mastery independence are defined by D-10.
 
 ### US-10: Use an accessible, responsive PWA
 
@@ -285,11 +285,25 @@ policies beyond server-accepted typed attempts remain unresolved.
 - Technical failures do not themselves constitute a review outcome. Rolled-back
   saves leave the schedule unchanged; unknown commits require reconciliation.
   Overdue items cannot disappear solely because the original due date passed.
-- Spaced repetition requires defined successive review spacing. No interval list,
-  adaptive formula, scheduler service, or cron job is required by this document.
-- Initial mastery schedules the first review one local calendar day later. D-10
-  must still define later intervals, success/failure effects, interval anchors,
-  early or repeated reviews, missed reviews, and policy changes.
+- Spaced repetition uses the deterministic local-calendar-day ladder
+  `1,3,7,14,30,60,120`. Initial mastery creates stage zero and schedules the first
+  review one local calendar day later. Each successful review advances one stage,
+  capped at 120 days. A failed review resets to stage zero and is due one local
+  calendar day later; stage zero is the minimum and therefore cannot be shortened.
+- Reviews are accepted only when their due instant has arrived. Successful and
+  failed reviews remain mastered and do not alter initial learning-day mastery
+  facts. Every accepted review is an assessed practice attempt and qualifies its
+  account-local practice day.
+- Successive due instants are anchored to the trusted server acceptance instant,
+  not the previous due instant. They preserve that instant's local wall-clock time
+  while adding the selected number of calendar days in the account's validated
+  IANA timezone. Thus an overdue review remains available until completed and does
+  not trigger immediate catch-up reviews. An existing due instant is not
+  reinterpreted after a timezone change; the next accepted review uses the zone
+  effective at acceptance.
+- The policy identifier is `fixed-review-ladder-v1`. A scheduler service, cron
+  job, adaptive formula, early review, or repeated review before the newly stored
+  due instant is not part of this policy.
 
 ## 7. Security, privacy, and failure requirements
 
@@ -325,8 +339,8 @@ multiple speculative implementations.
 | D-06 | Local-first browser transcription approved; ordinary Web Speech is opt-in, local Mac Whisper is development-only, raw recordings are not retained, and transcript correction/retention remain open    | US-06, privacy                |
 | D-07 | Account threshold defaults to 3, range 1–30; optional item overrides use the same range; changes apply on next success without revoking mastery                                                       | US-07                         |
 | D-08 | Success seals verse-day credit; failures remain attempts but do not erase credit; request retries are idempotent                                                                                      | US-05/06/07                   |
-| D-09 | Any persisted typed assessment qualifies a practice day; review qualification and streak display details remain open                                                                                  | US-08                         |
-| D-10 | First review is one local calendar day after mastery; later intervals, anchors, early/overdue/repeated reviews, failure/demotion and policy changes remain open                                       | US-09                         |
+| D-09 | Any persisted typed learning or review assessment qualifies a practice day; current-day streak display details remain open                                                                            | US-08                         |
+| D-10 | Fixed `1,3,7,14,30,60,120` local-day ladder approved; success advances, failure resets to one day, accepted time anchors the next due value, early repeats are rejected, and mastery is retained      | US-09                         |
 | D-11 | Accessibility target, browser/device matrix, PWA installation details, offline reader scope and offline writes/sync                                                                                   | US-10                         |
 | D-12 | Account IANA zone/default UTC and server acceptance boundary approved for typed practice; travel and offline/backdated behavior remain open                                                           | All daily behaviour           |
 | D-13 | Typed input is limited to 10,000 Unicode code points/1,000 normalised words; voice is limited to supported MIME types, 5 MB, 0.25–120 seconds, and a 20-second provider timeout                       | Validation, voice, operations |
