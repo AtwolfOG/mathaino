@@ -15,12 +15,14 @@ export interface TypedRecitationProps {
   itemId: string;
   reference: string;
   verseText: string;
+  onSaved?: (result: RecitationResult) => void;
 }
 
 export function TypedRecitation({
   itemId,
   reference,
   verseText,
+  onSaved,
 }: TypedRecitationProps) {
   const [text, setText] = useState("");
   const [operationId, setOperationId] = useState(createOperationId);
@@ -55,6 +57,7 @@ export function TypedRecitation({
       if (response.ok && isRecitationResult(body)) {
         setResult(body);
         setUncertain(false);
+        onSaved?.(body);
       } else if (response.status === 503) {
         setUncertain(true);
         setError(

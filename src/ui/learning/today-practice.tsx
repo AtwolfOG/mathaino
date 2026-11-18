@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { LearningQueueView } from "../../application/learning-queue.ts";
 import { RecitationPractice } from "./recitation-practice.tsx";
@@ -17,6 +18,7 @@ export function TodayPractice({
   localWhisperEnabled?: boolean;
   createVoiceProviders?: () => VoiceProviderSet;
 }) {
+  const router = useRouter();
   const [queue, setQueue] = useState(initialQueue);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -49,6 +51,7 @@ export function TodayPractice({
   }
 
   async function refreshAfterReview(result: ReviewResult) {
+    router.refresh();
     const interval = result.schedule.intervalDays;
     setMessage(
       `Review saved. Next review in ${interval} ${interval === 1 ? "day" : "days"}.`,
@@ -115,6 +118,7 @@ export function TodayPractice({
             verseText={item.text}
             localWhisperEnabled={localWhisperEnabled}
             createVoiceProviders={createVoiceProviders}
+            onSaved={() => router.refresh()}
           />
         ) : (
           <TypedReview

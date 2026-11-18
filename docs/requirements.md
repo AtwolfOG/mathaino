@@ -188,14 +188,15 @@ As a learner, I can choose how many consecutive successful days establish master
 As a learner, I can see a streak that represents consecutive practice days.
 
 - Each qualifying calendar day contributes at most one day to the streak.
-- Repeated same-day activity cannot inflate the count; a non-qualifying day breaks
-  continuity, subject to the current-day display rule in D-09.
+- Repeated same-day activity cannot inflate the count. Before today's first
+  completion, a run ending yesterday remains current through the account's local
+  day; it resets after one full missed local day.
 - Merely opening the app, loading the queue, or experiencing a technical failure
   does not qualify as assessed practice.
 - Streaks are account-specific and distinct from each verse's mastery run.
 - Any persisted assessed typing success or failure, including a typed review,
   qualifies the account-wide practice day. Validation and technical failures do
-  not. The current-day display rule remains deferred.
+  not.
 
 ### US-09: Review mastered verses
 
@@ -339,7 +340,7 @@ multiple speculative implementations.
 | D-06 | Local-first browser transcription approved; ordinary Web Speech is opt-in, local Mac Whisper is development-only, raw recordings are not retained, and transcript correction/retention remain open    | US-06, privacy                |
 | D-07 | Account threshold defaults to 3, range 1–30; optional item overrides use the same range; changes apply on next success without revoking mastery                                                       | US-07                         |
 | D-08 | Success seals verse-day credit; failures remain attempts but do not erase credit; request retries are idempotent                                                                                      | US-05/06/07                   |
-| D-09 | Any persisted typed learning or review assessment qualifies a practice day; current-day streak display details remain open                                                                            | US-08                         |
+| D-09 | Any persisted typed learning or review assessment qualifies a practice day; a run ending yesterday remains current until the present local day ends                                                   | US-08                         |
 | D-10 | Fixed `1,3,7,14,30,60,120` local-day ladder approved; success advances, failure resets to one day, accepted time anchors the next due value, early repeats are rejected, and mastery is retained      | US-09                         |
 | D-11 | Accessibility target, browser/device matrix, PWA installation details, offline reader scope and offline writes/sync                                                                                   | US-10                         |
 | D-12 | Account IANA zone/default UTC and server acceptance boundary approved for typed practice; travel and offline/backdated behavior remain open                                                           | All daily behaviour           |

@@ -13,6 +13,7 @@ import { createReviewAttemptStore } from "../infrastructure/database/review.ts";
 import { createReviewService } from "../application/review.ts";
 import { readLocalWhisperEnvironment } from "../infrastructure/config/local-whisper-environment.ts";
 import { createLocalWhisperTranscriber } from "../infrastructure/transcription/local-whisper-server.ts";
+import { createPracticeProgressReader } from "../infrastructure/database/practice-progress.ts";
 
 async function createServices() {
   const config = readAuthEnvironment(process.env);
@@ -44,6 +45,7 @@ async function createServices() {
       ),
       review: createReviewService(createReviewAttemptStore(application.db)),
       practiceSettings: createPracticeSettings(application.db),
+      practiceProgress: createPracticeProgressReader(application.db),
       authOrigin: config.baseURL,
     };
   } catch (error) {

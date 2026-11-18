@@ -190,7 +190,8 @@ button {
 
 .today-shell,
 .library-shell,
-.settings-shell {
+.settings-shell,
+.progress-shell {
   width: min(100% - 2rem, 58rem);
   margin-inline: auto;
   padding-block: 1.25rem 4rem;
@@ -238,6 +239,46 @@ button {
 .today-title p {
   margin: 0.75rem 0 0;
   color: var(--muted);
+}
+.practice-streak {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  max-width: 46rem;
+  margin-bottom: 2.5rem;
+  padding: 1.5rem 0;
+  border-block: 1px solid var(--rule);
+}
+.practice-streak h2 {
+  margin: 0;
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+.practice-streak p {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+}
+.practice-streak dl {
+  display: flex;
+  gap: 2rem;
+  margin: 0;
+}
+.practice-streak dl > div {
+  display: flex;
+  flex-direction: column-reverse;
+}
+.practice-streak dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.practice-streak dd {
+  margin: 0;
+  color: var(--teal-dark);
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", serif;
+  font-size: 2.75rem;
+  line-height: 0.9;
 }
 .today-practice {
   max-width: 46rem;
@@ -508,6 +549,11 @@ button {
   }
   .today-progress > div {
     align-items: flex-end;
+  }
+  .practice-streak {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1.5rem;
   }
   .practice-verse {
     min-height: 0;

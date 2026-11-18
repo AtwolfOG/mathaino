@@ -14,7 +14,7 @@ import {
   countConsecutiveSuccessfulDays,
   determineMasteryTransition,
 } from "../../domain/mastery.ts";
-import { countConsecutiveCalendarDays } from "../../domain/practice-progress.ts";
+import { summarizePracticeStreak } from "../../domain/practice-progress.ts";
 import { reviewPolicyId } from "../../domain/review-schedule.ts";
 import type { DatabaseTransaction, TransactionHost } from "./client.ts";
 import {
@@ -78,6 +78,7 @@ export function createRecitationAttemptStore(
                 transaction,
                 userId,
                 existing.itemId,
+                now,
               ),
             };
           }
@@ -224,7 +225,7 @@ export function createRecitationAttemptStore(
           return {
             status: "recorded" as const,
             evaluation,
-            progress: await loadProgress(transaction, userId, target.id),
+            progress: await loadProgress(transaction, userId, target.id, now),
           };
         },
       );
@@ -297,9 +298,13 @@ async function loadProgress(
   transaction: DatabaseTransaction,
   userId: string,
   itemId: string,
+  now: Date,
 ): Promise<RecitationProgress> {
   const settings = await transaction
-    .select({ masteryThreshold: learningPreferences.masteryThreshold })
+    .select({
+      masteryThreshold: learningPreferences.masteryThreshold,
+      timeZone: learningPreferences.timeZone,
+    })
     .from(learningPreferences)
     .where(eq(learningPreferences.userId, userId))
     .limit(1);
@@ -321,13 +326,16 @@ async function loadProgress(
   const learningItem = item[0];
   if (!preference || !learningItem)
     throw new Error("Progress could not be loaded.");
+  if (!isValidIanaTimeZone(preference.timeZone))
+    throw new Error("Invalid stored practice settings.");
   return {
     consecutiveDays: countConsecutiveSuccessfulDays(successDates),
     masteryThreshold:
       learningItem.masteryThresholdOverride ?? preference.masteryThreshold,
     mastered: learningItem.state === "mastered",
-    practiceStreak: countConsecutiveCalendarDays(
+    practiceStreak: summarizePracticeStreak(
       practiceDates.map((row) => row.date),
-    ),
+      localCalendarDate(now, preference.timeZone),
+    ).currentStreak,
   };
 }

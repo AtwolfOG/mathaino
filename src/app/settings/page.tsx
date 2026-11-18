@@ -32,6 +32,7 @@ export default async function SettingsPage() {
           <Link href="/practice">Today</Link>
           <Link href="/bible">Bible</Link>
           <Link href="/learning">Library</Link>
+          <Link href="/progress">Progress</Link>
           <Link aria-current="page" href="/settings">
             Settings
           </Link>

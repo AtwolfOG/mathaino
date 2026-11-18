@@ -85,6 +85,7 @@ export function VoiceRecitation({
   itemId,
   reference,
   verseText,
+  onSaved,
   onTypeInstead,
   localWhisperEnabled = false,
   createProviders = defaultProviders,
@@ -491,6 +492,7 @@ export function VoiceRecitation({
     if (generation !== generationRef.current) return;
     if (response.ok && isRecitationResult(value)) {
       setResult({ ...value, transcript });
+      onSaved?.(value);
       setUncertainTranscript(null);
       setMessage("Transcript ready and recitation checked.");
       return;

@@ -176,6 +176,13 @@ test("intentional retries are separate attempts but cannot duplicate a successfu
           )
         ).rows,
       ).toEqual([{ count: 1 }]);
+      expect(
+        (
+          await tx.execute(
+            sql`select count(*)::int as count from daily_practice_completions`,
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
     });
   }));
 
@@ -324,6 +331,7 @@ test("a timezone change cannot backfill a missed mastery day", () =>
     expect(result.progress).toMatchObject({
       consecutiveDays: 1,
       mastered: false,
+      practiceStreak: 2,
     });
     await asFixtureUser(db, aliceId, async (tx) => {
       expect(

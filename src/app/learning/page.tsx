@@ -44,6 +44,7 @@ function PageHeader({ current }: { current: string }) {
         <Link aria-current="page" href="/learning">
           {current}
         </Link>
+        <Link href="/progress">Progress</Link>
         <Link href="/settings">Settings</Link>
         <SignOutButton />
       </nav>
